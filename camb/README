@@ -1,0 +1,4 @@
+CAMB version in galileon cosmology
+
+To compile background.cc or background_barreira.cc, use this command line :
+icc -lgsl -lgscblas -o output_file file.cc

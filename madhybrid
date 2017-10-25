@@ -1,0 +1,32 @@
+#!/bin/bash -l
+
+# Batch script to run a hybrid parallel job on Legion with the upgraded software
+# stack under SGE with Intel MPI.
+
+#$ -S /bin/bash
+
+# 1. Request ten minutes of wallclock time (format hours:minutes:seconds).
+#$ -l h_rt=0:10:0
+
+# 2. Request 1 gigabyte of RAM.
+#$ -l vmem=1G
+
+# 4. Set the name of the job.
+#$ -N MadIntelHybrid
+
+#$ -q pa_medium
+
+#$ -o /sps/snls14/CosmoMC2015/cosmomc/outputs
+
+#$ -e /sps/snls14/CosmoMC2015/cosmomc/outputs
+
+# 5. Select the MPI parallel environment and 24 cores.
+#$ -pe openmpi_4 24
+
+# 7. Automatically set threads to processes per node: if on X nodes = 12 OMP threads
+export OMP_NUM_THREADS=$(ppn)
+
+# 7. Run our MPI job with the default modules. Gerun is a wrapper script for mpirun. 
+
+mpiexec -pernode -n 4 /sps/snls14/CosmoMC2015/cosmomc/hybrid
+
