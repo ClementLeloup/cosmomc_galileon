@@ -25,6 +25,10 @@
         integer :: num_derived = 0
     contains
     procedure :: ParamArrayToTheoryParams => TP_ParamArrayToTheoryParams
+
+    !Modified by Clement Leloup
+    procedure :: H0FromThetaGalileon => TP_H0FromThetaGalileon
+
     procedure :: NonBaseParameterPriors => TP_NonBaseParameterPriors
     procedure :: CalcDerivedParams => TP_CalcDerivedParams
     procedure :: InitWithSetNames => TP_Init
@@ -139,86 +143,68 @@
 
             error = 0   !JD to prevent stops when using bbn_consistency or m_sterile
             DA = Params(3)/100
-            try_b = this%H0_min
-            call SetForH(Params,CMB,try_b, .true.,error)  !JD for bbn related errors
-            if(error/=0)then
-                cmb%H0=0
-                return
-            end if
 
             !Modified by Clement Leloup
-            print *, "je suis au numero 1"
-
-            !Modified by Clement Leloup
-            !D_b = CosmoCalc%CMBToTheta(CMB)
-            D_b = CosmoCalc%CMBToTheta(CMB, error)
-            if(error/=0)then
-                cmb%H0=0
-                return
-            end if
-
-            try_t = this%H0_max
-            call SetForH(Params,CMB,try_t, .false.)
-
-            !Modified by Clement Leloup
-            print *, "je suis au numero 2"
-
-            !Modified by Clement Leloup
-            !D_t = CosmoCalc%CMBToTheta(CMB)
-            D_t = CosmoCalc%CMBToTheta(CMB, error)
-            if(error/=0)then
-                cmb%H0=0
-                return
-            end if
-
-            !Modified by Clement Leloup
-            print *, "je suis au numero 3"
-
-            if (DA < D_b .or. DA > D_t) then
- 
-               !Modified by Clement Leloup
-               print *, "je suis au numero 4"
-
-               if (Feedback>1) write(*,*) instance, 'Out of range finding H0: ', real(Params(3)), D_b, D_t
-                cmb%H0=0 !Reject it
+            if(CosmoSettings%use_galileon) then
+               call this%H0FromThetaGalileon(Params, CMB, error)
             else
-                lasttry = -1
-                do
+               try_b = this%H0_min
+               call SetForH(Params,CMB,try_b, .true.,error)  !JD for bbn related errors
 
-                   !Modified by Clement Leloup
-                   print *, "je suis au numero 5"
+               !Modified by Clement Leloup
+               !D_b = CosmoCalc%CMBToTheta(CMB)
+               D_b = CosmoCalc%CMBToTheta(CMB, error)
+               if(error/=0)then
+                  cmb%H0=0
+                  return
+               end if
 
-                    call SetForH(Params,CMB,(try_b+try_t)/2, .false.)
+               try_t = this%H0_max
+               call SetForH(Params,CMB,try_t, .false.)
 
-                    !Modified by Clement Leloup
-                    print *, "je suis au numero 6"
+               !Modified by Clement Leloup
+               !D_t = CosmoCalc%CMBToTheta(CMB)
+               D_t = CosmoCalc%CMBToTheta(CMB, error)
+               if(error/=0)then
+                  cmb%H0=0
+                  return
+               end if
 
-                    !Modified by Clement Leloup
-                    !D_try = CosmoCalc%CMBToTheta(CMB)
-                    D_try = CosmoCalc%CMBToTheta(CMB, error)
-                    if(error/=0)then
-                       cmb%H0=0
-                       return
-                    end if
+               if (DA < D_b .or. DA > D_t) then
+                  if (Feedback>1) write(*,*) instance, 'Out of range finding H0: ', real(Params(3)), D_b, D_t
+                  cmb%H0=0 !Reject it
+               else
+                  lasttry = -1
+                  do
+                     call SetForH(Params,CMB,(try_b+try_t)/2, .false.)
 
-                    if (D_try < DA) then
+                     !Modified by Clement Leloup
+                     !D_try = CosmoCalc%CMBToTheta(CMB)
+                     D_try = CosmoCalc%CMBToTheta(CMB, error)
+                     if(error/=0)then
+                        cmb%H0=0
+                        return
+                     end if
+
+                     if (D_try < DA) then
                         try_b = (try_b+try_t)/2
-                    else
+                     else
                         try_t = (try_b+try_t)/2
-                    end if
-                    if (abs(D_try - lasttry)< 1e-7) exit
-                    lasttry = D_try
-                end do
+                     end if
+                     if (abs(D_try - lasttry)< 1e-7) exit
+                     lasttry = D_try
+                  end do
 
-                !!call InitCAMB(CMB,error)
-                if (CMB%tau==0._mcp) then
-                    CMB%zre=0
-                else
-                    CMB%zre = CosmoCalc%GetZreFromTau(CMB, CMB%tau)
-                end if
+                  !!call InitCAMB(CMB,error)
+                  if (CMB%tau==0._mcp) then
+                     CMB%zre=0
+                  else
+                     CMB%zre = CosmoCalc%GetZreFromTau(CMB, CMB%tau)
+                  end if
 
-                LastCMB(cache) = CMB
-                cache = mod(cache,ncache)+1
+                  LastCMB(cache) = CMB
+                  cache = mod(cache,ncache)+1
+               end if
             end if
 
             !Modified by Clement Leloup
@@ -230,6 +216,156 @@
     end select
 
     end subroutine TP_ParamArrayToTheoryParams
+
+    !Modified by Clement Leloup
+    subroutine TP_H0FromThetaGalileon(this, Params, CMB, error)
+    class(ThetaParameterization) :: this
+    real(mcp) Params(:)
+    Class(TTheoryParams), target :: CMB
+    integer error 
+    real(mcp) try_bb, try_bt, try_tb, try_tt, step, lasttry
+    real(mcp) theta_b, theta_t, DA, D_try
+!!$    integer j
+!!$    real(mcp) Hub, D_test
+
+    select type(CosmoCalc=>this%Config%Calculator)
+    class is (TCosmologyCalculator)
+        select type (CMB)
+        class is (CMBParams)
+
+           error = 0
+           DA = Params(3)/100
+
+           try_bb = this%H0_min
+           try_bt = this%H0_min
+           try_tt = this%H0_max
+           try_tb = this%H0_max
+
+           step = (try_tt - try_bb)*0.2
+
+           call SetForH(Params,CMB,try_tb, .true.)
+
+!!$            print *, "ombh2 :", Params(1), "omch2 :", Params(2)
+!!$            open(unit=125,file="theta2.dat",status='replace')
+!!$            do j=0, 100
+!!$               Hub = this%H0_min + j*(this%H0_max - this%H0_min)/100
+!!$               call SetForH(Params,CMB,Hub, .false.,error)
+!!$               D_test = CosmoCalc%CMBToTheta(CMB, error)
+!!$               if(error==0)then
+!!$                  write(125,'(2F30.15)') Hub, D_test
+!!$               end if
+!!$            end do
+!!$            close(125)
+!!$            stop
+
+           ! Loop to find H0max
+           do
+              !Return if no H0 verifies theoretical constraints
+              if(try_tb < try_bb)then
+                 cmb%H0=0
+                 if (Feedback>1) write(*,*) instance, 'This set of parameters is bad, no H0 allowed.'
+                 return
+              end if
+
+              call SetForH(Params,CMB,(try_tb+try_tt)/2, .false.)
+              call CosmoCalc%SetParamsForBackground(CMB, error)
+              if(error/=0)then
+                 if(try_tb==try_tt)then
+                    try_tt = try_tt - step
+                    try_tb = try_tt
+                 else
+                    try_tt = (try_tb+try_tt)/2
+                 end if
+              else
+                 if(try_tb==try_tt)then
+                    if(try_tb==this%H0_max)then
+                       exit
+                    else
+                       try_tt = try_tt + step
+                    end if
+                 else
+                    try_tb = (try_tb+try_tt)/2
+                 end if
+              end if
+              if (0.001 < abs(try_tt - try_tb) .and. abs(try_tt - try_tb) < 0.5) exit
+           end do
+
+           ! Loop to find H0min
+           do
+              call SetForH(Params,CMB,(try_bb+try_bt)/2, .false.)
+              call CosmoCalc%SetParamsForBackground(CMB, error)
+              if(error/=0)then
+                 if(try_bb==try_bt)then
+                    try_bb = try_bb + step
+                    try_bt = try_bb
+                 else
+                    try_bb = (try_bb+try_bt)/2
+                 end if
+              else
+                 if(try_bb==try_bt)then
+                    if(try_bt==this%H0_min)then
+                       exit
+                    else
+                       try_bb = try_bb - step
+                    end if
+                 else
+                    try_bt = (try_bb+try_bt)/2
+                 end if
+              end if
+              if (0.001 < abs(try_bt - try_bb) .and. abs(try_bt - try_bb) < 0.5) exit
+           end do
+
+           call SetForH(Params,CMB,try_bt, .false.)
+           theta_b = CosmoCalc%CMBToTheta(CMB, error)
+           call SetForH(Params,CMB,try_tb, .false.)
+           theta_t = CosmoCalc%CMBToTheta(CMB, error)
+
+           if (DA < theta_b .or. DA > theta_t) then
+              if (Feedback>1) write(*,*) instance, 'Out of range finding H0: ', real(Params(3)), theta_b, theta_t
+              cmb%H0=0 !Reject it
+           else
+              lasttry = -1
+              do
+                 call SetForH(Params,CMB,(try_bt+try_tb)/2, .false.)
+                 D_try = CosmoCalc%CMBToTheta(CMB, error)
+                 if(error/=0)then
+                    cmb%H0=0
+                    return
+                 end if
+
+                 !Check that theta is increasing
+                 if(D_try < theta_b .or. D_try > theta_t)then
+                    error = -1
+                    if (Feedback>1) write(*,*) instance, 'Theta is decreasing at H0= ', CMB%H0
+                    return
+                 end if
+
+                 if (D_try < DA) then
+                    try_bt = (try_bt+try_tb)/2
+                    theta_b = D_try
+                 else
+                    try_tb = (try_bt+try_tb)/2
+                    theta_t = D_try
+                 end if
+                 if (abs(D_try - lasttry)< 1e-7) exit
+                 lasttry = D_try
+              end do
+
+              !!call InitCAMB(CMB,error)
+              if (CMB%tau==0._mcp) then
+                 CMB%zre=0
+              else
+                 CMB%zre = CosmoCalc%GetZreFromTau(CMB, CMB%tau)
+              end if
+           end if
+
+        end select
+        class default
+        call MpiStop('CosmologyParameterizations: Calculator is not TCosmologyCalculator')
+    end select
+
+    end subroutine TP_H0FromThetaGalileon
+
 
     function GetYPBBN(Yhe)
     !Convert yhe defined as mass fraction (CMB codes), to nucleon ratio definition

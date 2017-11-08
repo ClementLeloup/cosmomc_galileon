@@ -93,9 +93,9 @@ double cG = 0;
 double c0 = 0; // not implemented with c0 yet, but in case it is one day ...
 
 // External functions from fortran
-extern"C" void massivenu_mp_nu_rho_(double* am, double* rhonu);
-extern"C" void massivenu_mp_nu_background_(double* am, double* rhonu, double* pnu);
-extern"C" void massivenu_mp_nurhopres_(double* am, double* rhonu, double* pnu);
+// extern"C" void massivenu_mp_nu_rho_(double* am, double* rhonu);
+// extern"C" void massivenu_mp_nu_background_(double* am, double* rhonu, double* pnu);
+// extern"C" void massivenu_mp_nurhopres_(double* am, double* rhonu, double* pnu);
 
 // Return absolute max of vector
 double maxVec(std::vector<double> vec){
@@ -178,6 +178,13 @@ inline int calcPertOmC2C3C4C5CGC0(double a, const double y[3]) {
   double noghostt = 0.5 - 0.75*c4*prod4 + 1.5*c5*prod5*h + 0.5*cG*prod2 - c0*y[2];
   double ct2 = (0.5 + 0.25*c4*prod4 + 1.5*c5*prod4*h*(h*dxdlna+dhdlna*xgal) - 0.5*cG*prod2 -c0*y[2]) / (0.5 - 0.75*c4*prod4 + 1.5*c5*prod5*h + 0.5*cG*prod2 - c0*y[2]);
 
+  // Galileon energy density fraction
+  double OmegaP = (0.5*c2*xgal*xgal - 6*c3*prod2*xgal + 22.5*c4*prod4 - 21*c5*prod5*h - 9*cG*prod2)/3.0;
+
+
+  // // To test theoretical constraints
+  // printf("a = %.12f \t Qs = %.12f \t cs2 = %.12f \t Qt = %.12f \t cT2 = %f \t OmegaPi = %.12f\n om = %.12f \t orad = %.12f \t c2 = %.12f \t c3 = %.12f \t c4 = %.12f \t cG = %.12f\n", a, noghost, cs2, noghostt, ct2, OmegaP, om, orad, c2, c3, c4, cG);
+
   if(noghost>-1e-8){
     fprintf(stderr, "Error : scalar no ghost constraint not verified : a = %.12f \t Qs = %.12f\n", a, noghost);
     return 1;
@@ -228,11 +235,11 @@ int calcValOmC2C3C4C5CGC0(double a, const double y[3], double f[3], void* params
   double a2 = a*a;
 
   // The equations : 
-  alpha = c0*h + c2/6.0*prod - 3*c3*h*prod2 + 15*c4*h2*prod3 - 17.5*c5*h3*prod4 - 3.0*cG*h2*prod;
-  gamma = 2*c0*h2 + c2/3.0*h*prod - c3*h2*prod2 + 2.5*c5*h4*prod4 - 2.0*cG*h3*prod;
-  beta = -2*c3*h3*prod + c2/6.0*h2 + 9*c4*h4*prod2 - 10*c5*h4*h*prod3 - cG*h4;
-  sigma = 2.0*( 1.0 - 2*c0*y[2] )*h - 2.0*c0*prod + 2.0*c3*prod3 - 15.0*c4*h*prod4 + 21.0*c5*h2*prod5 + 6.0*cG*h*prod2;
-  lambda = 3.0*( 1 - 2*c0*y[2] )*h2 + orad/(a2*a2) - 2.0*c0*h*prod - 2.0*c3*h*prod3 + c2/2.0*prod2 + 7.5*c4*h2*prod4 - 9.0*c5*h3*prod5 - cG*h2*prod2;
+  alpha = c2/6.0*prod - 3*c3*h*prod2 + 15*c4*h2*prod3 - 17.5*c5*h3*prod4 - 3.0*cG*h2*prod;
+  gamma = c2/3.0*h*prod - c3*h2*prod2 + 2.5*c5*h4*prod4 - 2.0*cG*h3*prod;
+  beta = c2/6.0*h2 - 2*c3*h3*prod + 9*c4*h4*prod2 - 10*c5*h4*h*prod3 - cG*h4;
+  sigma = 2.0*h + 2.0*c3*prod3 - 15.0*c4*h*prod4 + 21.0*c5*h2*prod5 + 6.0*cG*h*prod2;
+  lambda = 3.0*h2 + orad/(a2*a2) + c2/2.0*prod2 - 2.0*c3*h*prod3 + 7.5*c4*h2*prod4 - 9.0*c5*h3*prod5 - cG*h2*prod2;
 
   // Contribution from massive neutrinos
   if(nu_mass_eigenstates>0){
@@ -240,13 +247,13 @@ int calcValOmC2C3C4C5CGC0(double a, const double y[3], double f[3], void* params
       double rhonu = 0;
       double pnu = 0;
       double am = a*nu_masses[i];
-      massivenu_mp_nu_background_(&am, &rhonu, &pnu);
+      // massivenu_mp_nu_background_(&am, &rhonu, &pnu);
       lambda += grhormass[i]*pnu/(a2*a2*h0*h0);
       // printf("i : %d \t a : %.16f \t am : %.16f \t rhonu : %.16f \t lambda_numass : %.16f\n", i, a, am, rhonu, grhormass[i]*pnu/(a2*a2*h0*h0));
     }
   }
 
-  omega = -2*c0*h2 + 2*c3*h2*prod2 - 12*c4*h3*prod3 + 15*c5*h4*prod4 + 4.0*cG*h3*prod;
+  omega = 2*c3*h2*prod2 - 12*c4*h3*prod3 + 15*c5*h4*prod4 + 4.0*cG*h3*prod;
 
   double denom = sigma*beta - alpha*omega;
   f[0] = (omega*gamma - lambda*beta) / (a*denom);
@@ -305,6 +312,7 @@ int calcHubbleGalileon(double* grhormass, double* nu_masses, int* nu_mass_eigens
   const gsl_odeiv_step_type * T = gsl_odeiv_step_rkf45;
   gsl_odeiv_step * s = gsl_odeiv_step_alloc(T, 3);
   gsl_odeiv_control * c = gsl_odeiv_control_y_new(1e-18, 1e-16);
+  // gsl_odeiv_control * c = gsl_odeiv_control_yp_new(1e-8, 5e-7);
   gsl_odeiv_evolve * e = gsl_odeiv_evolve_alloc(3);
   gsl_odeiv_system sys;
   sys.function = calcValOmC2C3C4C5CGC0;
@@ -313,7 +321,8 @@ int calcHubbleGalileon(double* grhormass, double* nu_masses, int* nu_mass_eigens
 
   double y[3] = { 1.0, 1.0, 0.0 };  //Inital value of integral
   double a = 1;
-  int nstep = std::min(hubble.size(),x.size());
+  // int nstep = std::min(hubble.size(),x.size());
+  int nstep = intvar.size();
   double h = -1e-6; //Initial step guess
   double acurrtarg;
   int st;
@@ -321,7 +330,7 @@ int calcHubbleGalileon(double* grhormass, double* nu_masses, int* nu_mass_eigens
     acurrtarg = intvar[i];
     while(a > acurrtarg){
       st = gsl_odeiv_evolve_apply(e, c, s, &sys, &a, acurrtarg, &h, y);
-    }
+      }
    
     if(isnan(fabs(y[0])) || isnan(fabs(y[1]))  || isnan(fabs(y[2]))){
       gsl_odeiv_evolve_free(e);
@@ -331,23 +340,24 @@ int calcHubbleGalileon(double* grhormass, double* nu_masses, int* nu_mass_eigens
       return 8;
     }
 
-    if(params[0]){
-      testPert = calcPertOmC2C3C4C5CGC0(intvar[i], y);
-      if(testPert != 0){
-	return 7;
-      }
+    testPert = calcPertOmC2C3C4C5CGC0(intvar[i], y);
+    if(testPert != 0){
+      return 7;
     }
-
+    
     // Variables to optimize computation
     h2 = y[0]*y[0];
-    x1 = intvar[i]*y[1];
+    // x1 = intvar[i]*y[1];
+    x1 = a*y[1];
     x2 = x1*x1;
     x3 = x2*x1;
-    a3 = intvar[i]*intvar[i]*intvar[i];
+    // a3 = intvar[i]*intvar[i]*intvar[i];
+    a3 = a*a*a;
 
     // Friedmann equation for background
-    OmegaP = (0.5*c2*x2 - 6*c3*h2*x3 + 22.5*c4*h2*h2*x2*x2 - 21*c5*h2*h2*h2*x3*x2 - 9*cG*h2*x2)/3.0;
-    OmegaM = 1 - OmegaP - orad/(a3*intvar[i]*h2);
+    OmegaP = (0.5*c2*x2 - 6.0*c3*h2*x3 + 22.5*c4*h2*h2*x2*x2 - 21.0*c5*h2*h2*h2*x3*x2 - 9.0*cG*h2*x2)/3.0;
+    // OmegaM = 1 - OmegaP - orad/(a3*intvar[i]*h2);
+    OmegaM = 1 - OmegaP - orad/(a3*a*h2);
 
     // Contribution from massive neutrinos
     if((*nu_mass_eigenstates)>0){
@@ -355,20 +365,27 @@ int calcHubbleGalileon(double* grhormass, double* nu_masses, int* nu_mass_eigens
     	double rhonu = 0;
 	double pnu = 0;
     	double am = intvar[i]*nu_masses[j];
-    	massivenu_mp_nu_background_(&am, &rhonu, &pnu);
-    	OmegaM -= grhormass[j]*rhonu/(a3*intvar[i]*3.*h2*pow(h0, 2));
+    	// massivenu_mp_nu_background_(&am, &rhonu, &pnu);
+    	// OmegaM -= grhormass[j]*rhonu/(a3*intvar[i]*3.*h2*pow(h0, 2));
+    	OmegaM -= grhormass[j]*rhonu/(a3*a*3.*h2*pow(h0, 2));
       }
     }
 
     OmTest = om/(a3*h2);
 
+    // //For test
+    // printf("Test on OmegaM : %f %f %f %f %f %f %f %f %f %f %f %f %f %f %.12f\n", om, orad, c2, c3, c4, c5, cG, c0, OmTest, OmegaM, orad/(a3*a*h2), OmegaP, a3*h2, intvar[i], fabs((OmegaM - OmTest)/OmTest));
+    // // printf("lambda : %.12f\tusual : %.12f\tfrom massive neutrinos : %.12f\n", lambda, 3.0*h2 + orad/(a3*intvar[i]) - 2.0*c0*h2*x1 - 2.0*c3*h2*h2*x3 + c2/2.0*h2*x2 + 7.5*c4*h2*h2*h2*x2*x2 - 9.0*c5*h2*h2*h2*h2*x3*x2 - cG*h2*h2*x2, grhormass[0]*nuPres(intvar[i]*nu_masses[0])/(a3*intvar[i]*h0*h0));
+
     if(OmegaP<0){
-      fprintf(stderr, "Negative galileon energy density : a = %.12f \t %.12f\n", intvar[i], OmegaP);
+    //   // fprintf(stderr, "Negative galileon energy density : a = %.12f \t %.12f\n", intvar[i], OmegaP);
+      fprintf(stderr, "Negative galileon energy density : a = %.12f \t %.12f\n", a, OmegaP);
       return 5;
     }
 
     if ( fabs((OmegaM - OmTest)/OmTest)>1e-4 ) {
-      fprintf(stderr, "Integration error : %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n", om, orad, c2, c3, c4, c5, cG, c0, OmTest, OmegaM, OmegaP, OmegaM - 1 + OmegaP + orad/(a3*intvar[i]*h2), intvar[i], fabs((OmegaM - OmTest)/OmTest));
+      // fprintf(stderr, "Integration error : %f %f %f %f %f %f %f %f %f %f %f %f %.16f %.16f %f\n", om, orad, c2, c3, c4, c5, cG, c0, OmTest, OmegaM, OmegaP, OmegaM - 1 + OmegaP + orad/(a3*intvar[i]*h2), intvar[i], a, fabs((OmegaM - OmTest)/OmTest));
+      fprintf(stderr, "Integration error : %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n", om, orad, c2, c3, c4, c5, cG, c0, OmTest, OmegaM, OmegaP, OmegaM - 1 + OmegaP + orad/(a3*intvar[i]*h2), a, fabs((OmegaM - OmTest)/OmTest));
       return 4;
     }
 
@@ -447,7 +464,7 @@ extern "C" int arrays_(double* omegar, double* omegam, double* H0in, double* c2i
   double grhom = 3*pow(h0, 2); // critical density
   if((*nu_mass_eigenstates)>0){
     for(int i = 0; i<(*nu_mass_eigenstates); i++){
-      massivenu_mp_nu_rho_(&(nu_masses[i]), &rhonu);
+      // massivenu_mp_nu_rho_(&(nu_masses[i]), &rhonu);
       c5 += rhonu*grhormass[i]/(7.*grhom);
       // printf("Omeganu of mass eigenstate %d = %.16f\n", i, rhonu*grhormass[i]*0.726*0.726*94.07/grhom);
     }
@@ -472,11 +489,13 @@ extern "C" int arrays_(double* omegar, double* omegam, double* H0in, double* c2i
   printf("Number of points : %i\n", intvar.size());
   fflush(stdout);
 
-  printf("OmegaM0 = %.16f\nOmegaR0 = %.16f\nc0 = %.16f\nc2 = %.16f\nc3 = %.16f\nc4 = %.16f\nc5 = %.16f\ncG = %.16f\nh0 = %.16f Mpc-1\n", om, orad, c0, c2, c3, c4, c5, cG, h0);
+  printf("OmegaM0 = %.16f\nOmegaR0 = %.16f\nc0 = %.16f\nc2 = %.16f\nc3 = %.16f\nc4 = %.16f\nc5 = %.16f\ncG = %.16f\nh0 = %.16f km/s/Mpc\n", om, orad, c0, c2, c3, c4, c5, cG, h0*2.99792458e8/1000);
   fflush(stdout);
 
   hubble.resize(intvar.size(), 999999);
   x.resize(intvar.size(), 999999);
+
+  printf("Tracker criterion : %.12f\n", fabs(c2-6*c3+18*c4-15*c5-6*cG));
 
   // Integrate and fill hubble and x both when tracker and not tracker
   if(fabs(c2-6*c3+18*c4-15*c5-6*cG)>1e-8)
@@ -1105,40 +1124,76 @@ int test(){
 
   fflush(stdout);
 
-  orad = 8.2987687251764e-5;
+  // orad = 8.063127541638e-5;
+  // orad = 8e-5;
+  // orad = 2.469e-5/(0.736*0.736)*(1+0.2271*3.046);
+  orad = 0;
+
+  // // Scenario 1
+  // om = 0.279;
+  // h0 = 60.*1000/(2.99792458e8);
+  // c2 = -4.278;
+  // c3 = -1.580;
+  // c4 = -0.772;
+  // cG = 0;
+
+  // Scenario 2
+  om = 0.275;
+  h0 = 73.6*1000/(2.99792458e8);
+  c2 = -4.1;
+  c3 = -1.5;
+  c4 = -0.78;
+  cG = 0.;
+
+  // // Scenario 3
+  // om = 0.280;
+  // h0 = 72.7*1000/(2.99792458e8);
+  // c2 = -3.4;
+  // c3 = -1.1;
+  // c4 = -0.61;
+  // cG = 0.15;
+
+  // // Scenario 4
   // om = 0.275;
-  h0 = 60.;
+  // h0 = 72.7*1000/(2.99792458e8);
   // c2 = -4.1;
   // c3 = -3.375;
   // c4 = -0.775;
-  // c5 = -0.0672497;
-  // c2 = -4.9;
-  // c3 = -3.675;
-  // c4 = -0.75;
-  // c5 = -0.0262027;
-  c2 = -2.6952376862078604;
-  c3 = -1.0463171578101365;
-  c4 = 0.4309245906605363;
-  cG = 0.1166993355066031;
-  // c5 = ;
-  om = 0.3738186337831374;
+  // cG = 0.;
 
-  // arrays_("params_galjerem.ini", &orad, &om, &h0, &c2, &c3, &c4, &c5, &cG);
+  double grhormass[] = {0,0,0,0,0};
+  double nu_masses[] = {0,0,0,0,0};
+  int nu_mass_eigenstates = 0;
+  double a1 = 0.1;
+  double a2 = 0.01;
+  double a3 = 0.001;
+  double a4 = 0.0001;
+  double a5 = 0.00001;
 
-  // arrays_("params_galjerem.ini", &orad);
-  // FILE* f = fopen("full_integration.txt", "w");
+  arrays_(&orad, &om, &h0, &c2, &c3, &c4, &cG, grhormass, nu_masses, &nu_mass_eigenstates);
 
-  // double a = 1e-4;
-  // double* hx = handxofa_(&a);
-  // for(int i = 2; i< intvar.size()-1; i++){
-  //   double point = (intvar[i]+intvar[i+1])/2;
-  //   double* hx = handxofa_(&point);
-  //   fprintf(f, "%.16f ; %.16f ; %.16f\n", point, (*hx), (*(hx+1)));
-  // }
+  double* hx1 = handxofa_(&a1);
+  const double y1[] = {(*hx1), *(hx1+1), 0};
 
-  gsl_spline_free(spline_h);
-  gsl_spline_free(spline_x);
-  gsl_interp_accel_free(acc);  
+  double* hx2 = handxofa_(&a2);
+  const double y2[] = {(*hx2), *(hx2+1), 0};
+
+  double* hx3 = handxofa_(&a3);
+  const double y3[] = {(*hx3), *(hx3+1), 0};
+
+  double* hx4 = handxofa_(&a4);
+  const double y4[] = {(*hx4), *(hx4+1), 0};
+
+  double* hx5 = handxofa_(&a5);
+  const double y5[] = {(*hx5), *(hx5+1), 0};
+
+  calcPertOmC2C3C4C5CGC0(a1, y1);
+  calcPertOmC2C3C4C5CGC0(a2, y2);
+  calcPertOmC2C3C4C5CGC0(a3, y3);
+  calcPertOmC2C3C4C5CGC0(a4, y4);
+  calcPertOmC2C3C4C5CGC0(a5, y5);
+
+  freegal_();
 
   return 0;
 
