@@ -8,7 +8,7 @@
 <center>
 <h2>CosmoMC Readme </h2></center>
 
-<center><b>July 2015</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
+<center><b>November 2016</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
 page</a> for the latest version.<BR>
 </center>
 <P>
@@ -60,7 +60,7 @@ On a multi-processor machine you can start to get good results in a few of hours
 you'll need to set aside rather longer. You can also run on a cluster.
 
 <p>By default CosmoMC uses a simple Metropolis algorithm or an optimized fast-slow sampling method (which works for likelihood with many fast nuisance parameters like Planck).
-The program takes as inputs estimates of central values and posterior uncertainties of the various parameters. The proposal density can use information about parameter correlations from a supplied covariance matrix: use one if possible as it will significantly improve performance. Covariance matrices are supplied for common sets of default base parameters. If you compile and run with <A HREF="http://www-unix.mcs.anl.gov/mpi/">MPI</A> (to run across nodes in a cluster), there is an option to dynamically
+The program takes as inputs estimates of central values and posterior uncertainties of the various parameters. The proposal density can use information about parameter correlations from a supplied covariance matrix: use one if possible as it will significantly improve performance. Covariance matrices are supplied for common sets of default base parameters. If you compile and run with <A HREF="https://en.wikipedia.org/wiki/Message_Passing_Interface">MPI</A> (to run across nodes in a cluster), there is an option to dynamically
 learn the proposal matrix from the covariance of the post-burn-in samples so far. The MPI option also allows you to terminate the computation automatically when a particular convergence criterion is matched. MPI is strongly recommended.
 
 <p>There are two programs supplied <B>cosmomc</B> and <B>getdist</B>. The first is a compiled Fortran code
@@ -91,7 +91,7 @@ You then need to download and install the program:
 <li>Get the <a href="http://cosmologist.info/cosmomc/submit.html">download</a> (or clone from git)
 <li>Extract the files with
 <pre>
-tar xvf cosmomc.tar.gz
+tar xvf CosmoMC-xxx.tar.gz
 </pre>
 <li>Change to the cosmomc directory and run "make"
 <br>
@@ -196,12 +196,12 @@ The default accuracy is aimed at WMAP. Set <B>high_accuracy_default = T</B> to t
 
 <LI><B>Best-fit point</B><BR>
 
-Set <B>action</B> =2 to just calculate the best-fit point and stop (also outputting a .covmat estimate from the inverse Hessian if  <b>estimate_propose_matrix</b>=T). As of Oct 2012 this uses
-<A HREF="http://www.damtp.cam.ac.uk/user/na/NA_papers/NA2009_06.pdf">Powell's  2009 BOBYQA</A> bounded minimization routine, which works from two parameters up to hundreds of parameters, but does require that the likelihood return a valid number at all points between the bounds given on the base parameters in the input .ini file. The algorithm starts at the point given by the <i>center</i> parameter values given in the .ini file, and iterates until the parameter values are converged to within a radius of  <b>max_like_radius</b> in units of the input parameter <i>propose width</i>s; by default <i>max_like_radius = 0.01</i>.
- <!--(the convergence criterion is a radius in nD space; <em>max_like_radius</em> is scaled by the root of the number of parameters so that on average each parameter is converged to a fraction <em>max_like_radius</em> of its <em>propose_width</em>). -->
- The best-fit values (and derived and nuisance parameters) are output to a file called <em>file_root</em>.minimum. The method works for parameters with hard bounds that truncate the posterior, e.g. for neutrino mass mnu>0. It does not use the propose_matrix, only the input parameter bounds, center and propose_width.
+Set <B>action</B> =2 to just calculate the best-fit point and stop. This uses
+<A HREF="http://www.damtp.cam.ac.uk/user/na/NA_papers/NA2009_06.pdf">Powell's  2009 BOBYQA</A> bounded minimization routine, which works from two parameters up to hundreds of parameters, but does require that the likelihood return a valid number at all points between the bounds given on the base parameters in the input .ini file. The algorithm starts at the point given by the <i>center</i> parameter values given in the .ini file, and iterates until the parameter values are converged to within a radius of  <b>max_like_radius</b> (in normalized units, e.g. fraction of a standard deviation or propose_width). The minimization will also stop if the log likelihood has converged to within <i>minimize_loglike_tolerance</i>.
+
+ The best-fit values (and derived and nuisance parameters) are output to a file called <em>file_root</em>.minimum. The method works for parameters with hard bounds that truncate the posterior, e.g. for neutrino mass mnu>0.
 <BR><BR>
-action=2 only runs on one node, so compile without MPI or run only one MPI instance. Note that the minimizer appears not to be totally reliable for Planck (may stop not at the global minimum) - starting at different points can be a good check.
+Minimization with action=2 will work more reliably if you have a propose_matrix to approximately orthogonalize the likelihood. You can also run minimizations from multiple random starting points to check that they converge: run with e.g. "mpirun -np 4" and <i>minimize_random_start_pos=T</i> to check four minimizations - the final output will be the point with the best fit of all and a warning will be printed if there there are outliers.
 <BR><BR>
 
 <LI><B>Data file output</B><BR>
@@ -366,18 +366,17 @@ plots, samples plots, and performs PCA (principle component analysis). <BR><BR>
 <LI>Set the <b>parameter_names</b> parameter to specify a .paramnames file with the names and labels for parameters corresponding to the various columns in the chain files (see the supplied examples). If this parameter is empty getdist reads the parameters from the file_root.paramnames file that is output when generating the chains.
 <BR><BR><LI>
 If you have a derived parameter which has a prior which cuts off when the posterior is non-negligible
-you need to set the <b>limits[paramname]</b> variables to the corresponding limits
-- for example r02 for the tensor ratio. Otherwise
+you need to either set the limits in a xxx.derived_ranges file analogous to the xxx.paramnames file being when running the chains, or
+set the <b>limits[paramname]</b> variables to the corresponding limits when running GetDist. Otherwise
 limits are computed automatically. <i>DO NOT</i> use limits[paramname] to change
 the bounds on other plots - the program uses the limits information when
-it is estimating the posteriors from the samples. Limits for base MCMC parameters are set automatically from the .ranges file.
-When limits[paramname] are used the .margestats file
- contains one tail statistics - i.e. the lower bound is where 1-x of points are lower and x of the points higher, the upper bound is where 1-x of the points are higher and x lower (usually only one of the limits would be used). If only one end is fixed you can use N the floating end, e.g. "limitsxx = 0 N" for the tensor amplitude which has a greater than zero prior.
+it is estimating the posteriors from the samples. Limits for base MCMC and standard derived parameters are set automatically from the .ranges file produced with the chain.
+If only one end is fixed you can use N the floating end, e.g. "limitsxx = 0 N" for the tensor amplitude which has a greater than zero prior.
 <BLOCKQUOTE>
-<Font color=#FF0000>Example:</font> Since <I>many</I> people get this wrong, here is an illustration of what happens when generating plots from a tensor run set of chains (with prior r>0):<P>
+<Font color=#FF0000>Example:</font> Since often people get this wrong with new parameters, here is an illustration of what happens when generating plots from a tensor run set of chains (with prior r>0):<P>
 <table border=0 Cellpadding=20><TR><TD>
 <IMG SRC="http://cosmologist.info/cosmomc/pics/r_wrong.png"><BR>
-Incorrect result when <B>limits[r02]</B> is not set.</TD><TD> <IMG SRC="http://cosmologist.info/cosmomc/pics/r_correct.png"><BR>Correct result when setting <B>limits[r02]=0 N</B>.</TD></TR></table>
+Incorrect result when no chain.ranges file and  <B>limits[r02]</B> is not set.</TD><TD> <IMG SRC="http://cosmologist.info/cosmomc/pics/r_correct.png"><BR>Correct result when setting <B>limits[r02]=0 N</B> (or using default .ranges file, which includes the equivalent prior information from paramnames/derived_tensors.derived_ranges).</TD></TR></table>
 <P>
 <LI>Various parameters determine how sample densities are computed (see the <A HREF="http://cosmologist.info/notes/GetDist.pdf">Kernel Density Estimation notes</A>).  The <B>smooth_scale_1D</b> and <B>smooth_scale_2D</B> parameters can be set to change the smoothing scale.
 For smooth_scale_1D:
@@ -565,8 +564,30 @@ installed manually or obtained from the cosmomc git repository (access available
 </UL>
 -->
 <A NAME="Version"><h2  style ="color:darkred">Version History</h2></A>
-
 <UL>
+<LI><B>xxx 2017</B><BR>
+<UL>
+<li>Added BAO consensus: batch3/DR12_BAO_consensus.ini and  batch3/DR12_FS_consensus.ini. BAO module updated to support DM measurements, measurement files without error columns, reading either covariance or inverse covariance, support for multiple specified zeff.
+</UL>
+<LI><B>November 2016</B><BR>
+<UL>
+<LI>Added .derived_ranges files (in /paramnames folder) to specify hard priors on derived parameters. These are now propagated to output chain .ranges file along with H0 and z_rei priors (and hence limits do not need to be manually specified when running GetDist).
+<LI>Added <b>neutrino_hierarchy</b> (={normal, inverted, degenerate}), to support one or two distinct eigenstate approximation to oscillation constraints.
+<LI>Bicep BK14 data files and CMB_BK_Planck update (thanks Colin Bischoff)
+<LI>Support for BAO .dataset files with no measurement_type keyword (set in data file for each point instead)
+<LI>Updated getdist to 0.2.6 (fixing compatibility issue with latest matplotlib for 2D contours)
+<LI>Update CAMB to Nov 2016 version
+</UL>
+
+<LI><B>June 2016</B><BR>
+<UL>
+<LI>CAMB updated to May 2016 version (including HMCode Halofit support)
+<LI>Added DR12 BAO (in batch3/, thanks Tom Charnock)
+<LI>Added batch3/HST_Riess2016.ini
+<LI>Added <b>include_fixed_parameter_priors</b> input option (default false, as before)
+<LI>Latest <A HREF="https://pypi.python.org/pypi/GetDist/">GetDist</A> version and small fixes
+</UL>
+
 <LI><B>July 2015</B><BR>
 <UL>
 <LI>Data Updates:

@@ -3,11 +3,12 @@
     use FileUtils
     use StringUtils
     use MiscUtils
+    use ObjectLists
     implicit none
     private
     integer, parameter :: ParamNames_maxlen = 128
 
-    Type TParamNames
+    Type TBaseParamNames
         integer :: nnames =0
         integer :: num_MCMC = 0
         integer :: num_derived = 0
@@ -15,6 +16,10 @@
         character(LEN=ParamNames_maxlen), dimension(:), allocatable ::  label
         character(LEN=ParamNames_maxlen), dimension(:), allocatable ::  comment
         logical, dimension(:), allocatable ::  is_derived
+    end Type TBaseParamNames
+
+    Type, extends(TBaseParamNames) :: TParamNames
+        Type(TStringList) :: Derived_ranges
     contains
     procedure :: AddNames => ParamNames_Add
     procedure :: AddFile => ParamNames_AddFile
@@ -35,6 +40,7 @@
     procedure :: SetLabels => ParamNames_SetLabels
     procedure :: SetUnnamed => ParamNames_SetUnnamed
     procedure :: WriteFile => ParamNames_WriteFile
+    procedure :: AddDerivedRange => ParamNames_AddDerivedRange
     generic :: Add => AddNames, AddFile
     end Type TParamNames
 
@@ -116,6 +122,7 @@
     integer n
     character(LEN=:), allocatable :: InLine
     Type(TTextFile) :: F
+    character(LEN=:), allocatable :: range_name
 
     call F%Open(filename)
     n = F%Lines()
@@ -135,10 +142,17 @@
     this%num_derived = count(this%is_derived)
     this%num_MCMC = this%nnames - this%num_derived
 
+    range_name = trim(filename)
+    call StringReplace('.paramnames','.derived_ranges',range_name)
+    if (range_name /= trim(filename) .and. File%Exists(range_name)) then
+        call this%derived_ranges%AddFromFile(range_name, .true.)
+    end if
+
     end subroutine ParamNames_Init
 
     subroutine ParamNames_AssignItem(this, Names2,n,i)
-    class(TParamNames), target :: this, Names2
+    class(TParamNames), target :: this
+    class(TBaseParamNames), target :: Names2
     integer n, i
 
     this%name(n) = Names2%name(i)
@@ -164,13 +178,13 @@
     class(TParamNames), target :: this, Names
     logical, intent(in), optional :: check_duplicates
     integer n,i, newold, derived
-    class(TParamNames),pointer :: P, NamesOrig
+    class(TBaseParamNames),pointer :: P, NamesOrig
 
-    allocate(NamesOrig, source = this)
+    allocate(NamesOrig, source = this%TBaseParamNames)
 
     n=0
     do i=1, Names%nnames
-        if (NamesOrig%index(Names%name(i))==-1) then
+        if (this%index(Names%name(i))==-1) then
             n=n+1
         else
             if (DefaultFalse(check_duplicates)) &
@@ -198,10 +212,9 @@
     if (this%nnames/= NamesOrig%nnames + n) stop 'ParamNames_Add: duplicate parameters?'
 
     this%num_derived = count(this%is_derived)
-    this%num_MCMC= this%nnames-this%num_derived
-
-    call NamesOrig%Dealloc()
+    this%num_MCMC = this%nnames-this%num_derived
     deallocate(NamesOrig)
+    call this%derived_ranges%AddItems(Names%derived_ranges, .true.)
 
     end subroutine ParamNames_Add
 
@@ -461,6 +474,35 @@
 
     end function ParamNames_HasReadIniForParam
 
+    subroutine ParamNames_AddDerivedRange(this, Name, Mn, Mx)
+    class(TParamNames) :: this
+    character(LEN=*), intent(in) :: Name
+#ifdef SINGLE
+    integer, parameter :: mcp= KIND(1.0)
+#else
+    integer, parameter :: mcp= KIND(1.d0)
+#endif
+    real(mcp), intent(in), optional :: Mn, Mx
+    character(LEN=ParamNames_maxlen) :: tag
+    character(LEN=17) :: Mnn, Mxx
+    character(LEN=22) :: parname
+
+    if (present(Mn)) then
+        write(Mnn,'(E17.7)') Mn
+    else
+        Mnn = '    N'
+    end if
+    if (present(Mx)) then
+        write(Mxx,'(E17.7)') Mx
+    else
+        Mxx = '    N'
+    end if
+    parname = Name
+    write(tag,'(1A22, 1A17, 1A17)') parname, Mnn, Mxx
+    call this%Derived_ranges%Add(tag)
+
+
+    end subroutine ParamNames_AddDerivedRange
 
 
     end module ParamNames

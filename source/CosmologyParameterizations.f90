@@ -72,6 +72,9 @@
     call Names%Add('paramnames/derived_theory.paramnames')
     if (CosmoSettings%use_LSS) call Names%Add('paramnames/derived_LSS.paramnames')
     if (CosmoSettings%compute_tensors) call Names%Add('paramnames/derived_tensors.paramnames')
+    !Add output ranges to match priors
+    call Names%AddDerivedRange('zrei', mn=this%use_min_zre)
+    call Names%AddDerivedRange('H0', this%H0_min, this%H0_max)
     this%num_derived = Names%num_derived
 
     !Modified by Clement Leloup
@@ -157,6 +160,7 @@
                 return
             end if
 
+
             try_t = this%H0_max
             call SetForH(Params,CMB,try_t, .false.)
 
@@ -185,8 +189,8 @@
                 lasttry = -1
                 do
 
-                   !Modified by Clement Leloup
-                   print *, "je suis au numero 5"
+                    !Modified by Clement Leloup
+                    print *, "je suis au numero 5"
 
                     call SetForH(Params,CMB,(try_b+try_t)/2, .false.)
 
@@ -263,7 +267,6 @@
         call this%ParamArrayToTheoryParams(P,CMB)
 
         derived(1) = CMB%H0
-
         derived(2) = CMB%omv
         derived(3) = CMB%omdm+CMB%omb
         derived(4) = CMB%omdmh2 + CMB%ombh2
@@ -324,7 +327,7 @@
         end if
 
         if (CosmoSettings%Compute_tensors) then
-            derived(ix:ix+5) = [Theory%tensor_ratio_02, Theory%tensor_ratio_BB, log(Theory%tensor_AT*1e10), &
+            derived(ix:ix+5) = [Theory%tensor_ratio_02, Theory%tensor_ratio_BB, log(max(1e-15,Theory%tensor_AT)*1e10), &
                 Theory%tensor_ratio_C10, Theory%tensor_AT*1e9, Theory%tensor_AT*1e9*exp(-2*CMB%tau) ]
             ix=ix+6
         end if
@@ -375,6 +378,7 @@
         CMB%wa = Params(9)
         CMB%nnu = Params(10) !3.046
         !Params(6) is now mnu, where mnu is physical standard neutrino mass and we assume standard heating
+        CMB%sum_mnu_standard = Params(6)
         CMB%omnuh2=Params(6)/neutrino_mass_fac*(standard_neutrino_neff/3)**0.75_mcp
         !Params(7) is mass_sterile*Neff_sterile
         CMB%omnuh2_sterile = Params(7)/neutrino_mass_fac
@@ -437,7 +441,6 @@
     class(TGeneralConfig), target :: Config
 
     this%late_time_only = .true.
-
     call this%Initialize(Ini,Names, 'paramnames/params_background.paramnames', Config)
     call this%SetTheoryParameterNumbers(Names%num_MCMC,0)
 
@@ -489,6 +492,7 @@
            omrad = (1 + 7._mcp/8*(4._mcp/11)**(4._mcp/3)*CMB%nnu)*grhog/3*CMB%H0**2/c**2*1000**2
            CMB%c5 = 1./7*(-1 + CMB%omb + CMB%omdm + omrad + CMB%c2/6 - 2*CMB%c3 + 7.5*CMB%c4 - 3*CMB%cG) ! Careful here, radiation hard coded
         end if
+
 
         CMB%nufrac=CMB%omnuh2/CMB%omdmh2
         CMB%reserved=0

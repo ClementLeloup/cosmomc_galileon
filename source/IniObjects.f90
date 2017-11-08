@@ -212,7 +212,6 @@
 
     if ((.not. this%AllowDuplicateKeys .or. isDefault) .and. this%HasKey(AName)) then
         if (this%ignoreDuplicates .or. isDefault) return
-
         call this%Error('duplicate key name',AName)
     end if
     if (this%Count == this%Capacity) call this%SetCapacity(this%Capacity + this%Delta)

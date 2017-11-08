@@ -113,10 +113,10 @@ class MainWindow(QMainWindow):
             Dirs = [Dirs]  # Qsettings doesn't save single item lists reliably
         if Dirs is not None:
             Dirs = [x for x in Dirs if os.path.exists(x)]
-            if not lastDir in Dirs and os.path.exists(lastDir):
+            if lastDir is not None and not lastDir in Dirs and os.path.exists(lastDir):
                 Dirs.insert(0, lastDir)
             self.listDirectories.addItems(Dirs)
-            if os.path.exists(lastDir):
+            if lastDir is not None and os.path.exists(lastDir):
                 self.listDirectories.setCurrentIndex(Dirs.index(lastDir))
                 self.openDirectory(lastDir)
             else:
@@ -512,8 +512,11 @@ class MainWindow(QMainWindow):
 
     def reLoad(self):
         adir = self.getSettings().value('lastSearchDirectory')
-        batchjob.resetGrid(adir)
-        self.openDirectory(adir)
+        if adir is not None:
+            batchjob.resetGrid(adir)
+            self.openDirectory(adir)
+        if self.plotter:
+            self.plotter.sampleAnalyser.reset(self.iniFile)
 
     def getRootname(self):
         rootname = None
@@ -634,7 +637,8 @@ class MainWindow(QMainWindow):
     def settingsChanged(self):
         if self.plotter:
             self.plotter.sampleAnalyser.reset(self.iniFile)
-            self.plotData()
+            if self.plotter.fig:
+                self.plotData()
 
     def showPlotSettings(self):
         """
@@ -740,11 +744,13 @@ class MainWindow(QMainWindow):
 
     def saveDirectories(self):
         dirs = self.getDirectories()
-        dirs = [self.rootdirname] + [x for x in dirs if not x == self.rootdirname]
+        if self.rootdirname:
+            dirs = [self.rootdirname] + [x for x in dirs if not x == self.rootdirname]
         if len(dirs) > 10: dirs = dirs[:10]
         settings = self.getSettings()
         settings.setValue('directoryList', dirs)
-        settings.setValue('lastSearchDirectory', self.rootdirname)
+        if self.rootdirname:
+            settings.setValue('lastSearchDirectory', self.rootdirname)
 
     def selectRootDirName(self):
         """
@@ -1082,6 +1088,7 @@ class MainWindow(QMainWindow):
         """
         Slot function called when pushButtonPlot is pressed.
         """
+        if self.updating: return
         self.showMessage("Generating plot....")
         actionText = "plot"
         try:
@@ -1131,7 +1138,7 @@ class MainWindow(QMainWindow):
             if len(chain_dirs) == 1:
                 chain_dirs = "r'%s'" % chain_dirs[0].rstrip('\\').rstrip('/')
 
-            if isinstance(self.iniFile, six.string_types) and self.iniFile <> getdist.default_getdist_settings:
+            if isinstance(self.iniFile, six.string_types) and self.iniFile != getdist.default_getdist_settings:
                 script += "g=gplot.%s(chain_dir=%s, analysis_settings=r'%s')\n" % (plot_func, chain_dirs, self.iniFile)
             elif isinstance(self.iniFile, IniFile):
                 script += "g=gplot.%s(chain_dir=%s,analysis_settings=analysis_settings)\n" % (plot_func, chain_dirs)

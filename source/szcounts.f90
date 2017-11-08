@@ -636,7 +636,6 @@
     character (LEN=200)::filename
     integer :: iunit,ylim_choice
     integer ::k_ini,k_fin,nthetas,ntab,nsteps_z2,p1(1),p2(1),ini,npatches,p(1,1),pz,pm
-    integer :: id
     INTEGER, DIMENSION(8,2) :: values_time
     REAL(SP) :: clock_time
 

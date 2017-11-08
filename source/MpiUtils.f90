@@ -22,7 +22,6 @@
 #ifdef MPI
     integer ierror
     call mpi_comm_rank(mpi_comm_world,GetMPIrank,ierror)
-    
     if (ierror/=MPI_SUCCESS) call MpiStop('MPI fail')
 #else
     GetMpiRank=0

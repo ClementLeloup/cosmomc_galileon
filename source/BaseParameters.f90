@@ -27,6 +27,7 @@
         logical :: use_fast_slow = .false.
         integer :: num_fast, num_slow
         integer :: num_semi_fast, num_semi_slow
+        logical :: include_fixed_parameter_priors = .false.
         real(mcp), allocatable :: PMin(:), PMax(:), StartWidth(:), PWidth(:), center(:)
         logical(mcp), allocatable :: varying(:)
         logical :: block_semi_fast = .true.
@@ -166,11 +167,12 @@
     Type(TSettingIni) :: Combs
     integer params(num_params), num_lin
 
+    call Ini%Read('include_fixed_parameter_priors',this%include_fixed_parameter_priors)
     allocate(this%GaussPriors%std(num_params))
     allocate(this%GaussPriors%mean(num_params))
     this%GaussPriors%std=0 !no priors by default
     do i=1,num_params
-        if (this%varying(i)) then
+        if (this%varying(i) .or. this%include_fixed_parameter_priors) then
             InLine =  this%NameMapping%ReadIniForParam(Ini,'prior',i)
             if (InLine/='') then
                 read(InLine, *, iostat=status) this%GaussPriors%mean(i), this%GaussPriors%std(i)
@@ -273,6 +275,9 @@
     do i=1, this%NameMapping%num_MCMC
         call F%WriteLeftAligned('(1A22)', this%NameMapping%NameOrNumber(i))
         call F%Write([this%PMin(i),this%PMax(i)])
+    end do
+    do i= 1, this%NameMapping%derived_ranges%Count
+        call F%Write(this%NameMapping%derived_ranges%Item(i))
     end do
     call F%Close()
 

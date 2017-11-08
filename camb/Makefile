@@ -8,18 +8,28 @@ ifortErr = $(shell which ifort >/dev/null; echo $$?)
 ifeq "$(ifortErr)" "0"
 
 #Intel compiler
+# For OSX replace shared by dynamiclib
 F90C     = ifort
-#FFLAGS = -openmp -fast -W0 -WB -fpp2 -vec_report0
-#FFLAGS = -openmp -fast -W0 -WB -fpp2 -qopt-report0 -qopt-report-phase=vec
-FFLAGS = -openmp -ipo -O3 -W0 -WB -fpp2 -qopt-report0 -qopt-report-phase=vec -CB
 
 #Modified by Clement Leloup
-FFLAGS = -openmp -ipo -O3 -W0 -WB -fpp2 -qopt-report0 -qopt-report-phase=vec -CB
+#FFLAGS = -fast -W0 -WB -fpp 
+FFLAGS = -ipo -W0 -WB -fpp -CB
+SFFLAGS = -shared -fpic
+DEBUGFLAGS = -g -check all -check noarg_temp_created -traceback -fpp -fpe0
 
-DEBUGFLAGS =-openmp -g -check all -check noarg_temp_created -traceback -fpp -fpe0
+ifortVer_major = $(shell ifort -v 2>&1 | cut -d " " -f 3 | cut -d. -f 1)
+ifeq ($(shell test $(ifortVer_major) -gt 15; echo $$?),0)
+FFLAGS+= -qopenmp
+DEBUGFLAGS+= -qopenmp
+else
+FFLAGS+= -openmp -vec_report0
+DEBUGFLAGS+= -openmp
+endif
+
 ## This is flag is passed to the Fortran compiler allowing it to link C++ if required (not usually):
 F90CRLINK = -cxxlib
 MODOUT = -module $(OUTPUT_DIR)
+SMODOUT = -module $(DLL_DIR)
 ifneq ($(FISHER),)
 FFLAGS += -mkl
 endif
@@ -29,11 +39,14 @@ gfortErr = $(shell which gfortran >/dev/null; echo $$?)
 ifeq "$(gfortErr)" "0"
 
 #Gfortran compiler:
-#The options here work in v4.6+
+#The options here work in v4.6+. Python wrapper needs v4.9+.
 F90C     = gfortran
+SFFLAGS =  -shared -fPIC
+
 FFLAGS =  -O3 -fopenmp -ffast-math -fmax-errors=4
 DEBUGFLAGS = -cpp -g -fbounds-check -fbacktrace -ffree-line-length-none -fmax-errors=4 -ffpe-trap=invalid,overflow,zero
 MODOUT =  -J$(OUTPUT_DIR)
+SMODOUT = -J$(DLL_DIR)
 
 ifneq ($(shell uname -s),Darwin)
 #native optimization does not work on Mac
