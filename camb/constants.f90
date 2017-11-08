@@ -39,7 +39,7 @@
        real(dl), parameter :: barssc0= k_B / m_p / c**2
        real(dl), parameter :: kappa=8._dl*const_pi*G
        real(dl), parameter :: a_rad = 8._dl*const_pi**5*k_B**4/15/c**3/h_p**3
-                !7.565914e-16_dl !radiation constant for u=aT^4
+       !7.565914e-16_dl !radiation constant for u=aT^4
 
 
        real(dl), parameter :: Compton_CT = MPC_in_sec*(8.d0/3.d0)*(sigma_thomson/(m_e*c))*a_rad

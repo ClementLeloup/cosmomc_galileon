@@ -397,7 +397,7 @@
           return
        end if
 
-       if (global_error_flag==0) then   
+       if (global_error_flag==0) then
           CP%tau0=TimeOfz(0._dl)
           ! print *, 'chi = ',  (CP%tau0 - TimeOfz(0.15_dl)) * CP%h0/100
           last_tau0=CP%tau0
@@ -533,7 +533,7 @@
     real(dl) DeltaTime, atol
     real(dl), intent(IN) :: a1,a2
     real(dl), optional, intent(in) :: in_tol
-    real(dl) dtauda, rombint !diff of tau w.CP%r.t a and integration
+    real(dl) dtauda, rombint !diff of tau w.r.t a and integration
     external dtauda, rombint
 
     if (present(in_tol)) then
