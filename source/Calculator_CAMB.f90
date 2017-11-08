@@ -171,15 +171,20 @@
     end do
     end subroutine CAMBCalc_SetDerived
 
-    subroutine CAMBCalc_SetParamsForBackground(this,CMB)
+    !modified by Clement Leloup
+    !subroutine CAMBCalc_SetParamsForBackground(this,CMB)
+    subroutine CAMBCalc_SetParamsForBackground(this,CMB,error)
     use Camb, only: CAMBParams_Set
     class(CAMB_Calculator) :: this
     class(CMBParams) CMB
     Type(CAMBParams)  P
+    integer, optional :: error
 
     !set background parameters, but don't calculate thermal history
     call this%CMBToCAMB(CMB, P)
-    call CAMBParams_Set(P)
+
+    !Modified by Clement Leloup
+    call CAMBParams_Set(P, error)
 
     end subroutine CAMBCalc_SetParamsForBackground
 
@@ -219,15 +224,7 @@
         Threadnum =num_threads
 
         if (this%CAMB_timing) time = TimerTime()
-
-        !Modified by Clement Leloup
-        print *, "trucmuche"
-
         call CAMB_GetTransfers(P, Info%Transfers, error)
-        
-        !Modified by Clement Leloup
-        print *, "blablabla"
-
         if (this%CAMB_timing) call Timer('GetTransfers', time)
         class default
         call MpiStop('CAMB_GetNewTransferData with wrong TTheoryIntermediateCache type')
@@ -628,18 +625,8 @@
         WantReion = .true.
     end if
 
-    !Modified by Clement Leloup
-    print *, "A"
-
     call this%CMBToCAMB(CMB, P)
-
-    !Modified by Clement Leloup
-    print *, "B"
-
     call CAMBParams_Set(P,error,WantReion)
-
-    !Modified by Clement Leloup
-    print *, "C"
 
     end subroutine CAMBCalc_InitCAMB
 
@@ -682,21 +669,12 @@
     real(mcp) CMBToTheta
     integer error
 
-    !Modified by Clement Leloup
-    print *, "First"
-
     call this%InitCAMB(CMB,error,.false.)
-
-    !Modified by Clement Leloup
-    print *, "Second"
 
     !Modified by Clement Leloup
     if (error/=0) then
        return
     end if
-
-    !Modified by Clement Leloup
-    print *, "Third"
 
     CMBToTheta = CosmomcTheta()
 
