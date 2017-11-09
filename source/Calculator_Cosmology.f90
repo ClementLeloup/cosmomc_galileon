@@ -67,9 +67,14 @@
 
     end subroutine GetNewBackgroundData
 
-    subroutine SetParamsForBackground(this,CMB)
+    !Modified by Clement Leloup
+    !subroutine SetParamsForBackground(this,CMB)
+    subroutine SetParamsForBackground(this,CMB, error)
     class(TCosmologyCalculator) :: this
     class(CMBParams) CMB
+
+    !Modified by Clement Leloup
+    integer, optional :: error
 
     call this%ErrorNotImplemented('SetParamsForBackground')
 
