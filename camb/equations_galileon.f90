@@ -45,9 +45,6 @@
     w_lam = Ini_Read_Double_File(Ini,'w', -1.d0)
     cs2_lam = Ini_Read_Double_File(Ini,'cs2_lam',1.d0)
     
-    !Modified by Clement Leloup
-    !use_galileon = Ini_Read_Logical_File(Ini,'use_galileon',.false.)
-
     end subroutine DarkEnergy_ReadParams
 
     end module LambdaGeneral
@@ -100,6 +97,8 @@
          omegam = CP%omegab + CP%omegac
          hub = CP%h0/c*1000
 
+         print *, "omegabh2 :", CP%omegab*CP%h0**2/10000, "omegach2 :", CP%omegac*CP%h0**2/10000
+
          cptr1 = C_LOC(grhormass(1))
          cptr2 = C_LOC(nu_masses(1))
 
@@ -138,7 +137,7 @@
     a2=a**2
 
     !Modified by Clement Leloup
-!!$    if (CP%use_galileon .and. a .ge. 9.99999d-7) then
+!!    if (CP%use_galileon .and. a .ge. 9.99999d-7) then
     if (CP%use_galileon .and. a .ge. 1d-10) then
        a4=a2**2
        
@@ -166,7 +165,7 @@
 
     dtauda=sqrt(3/grhoa2)
 
-!!$    print *, a, dtauda, h2
+!!    print *, a, dtauda, h2
 
     end function dtauda
 
@@ -191,7 +190,10 @@
 
     logical :: DoTensorNeutrinos = .true.
 
-    logical :: DoLateRadTruncation = .true.
+    !Modified by Clement Leloup
+    !logical :: DoLateRadTruncation = .true.
+    logical :: DoLateRadTruncation = .false.
+
     !if true, use smooth approx to radition perturbations after decoupling on
     !small scales, saving evolution of irrelevant osciallatory multipole equations
 
@@ -293,9 +295,6 @@
     integer ind
 
     call dverk(EV,EV%ScalEqsToPropagate,derivs,tau,y,tauend,tol1,ind,c,EV%nvar,w)
-
-!!$    !Modified by Clement Leloup
-!!$    print *, "start :", y(1), c(13), c(14), tol1
 
     if (ind==-3) then
 
@@ -576,6 +575,7 @@
 
     neq=basic_num_eqns
     maxeq=neq
+
     if (.not. EV%no_phot_multpoles) then
         !Photon multipoles
         EV%g_ix=basic_num_eqns+1
@@ -588,6 +588,7 @@
             neq=neq + EV%lmaxgpol-1
         end if
     end if
+
     if (.not. EV%no_nu_multpoles) then
         !Massless neutrino multipoles
         EV%r_ix= neq+1
@@ -1288,6 +1289,7 @@
     real(dl) clxcdot, clxbdot, clxgdot, clxrdot, dotdeltaf
     type(C_PTR) :: cptr_to_cc
     real(kind=C_DOUBLE), pointer :: cc(:)
+    integer cross_i
 
 
     real(dl) qgdot,pigdot,pirdot,vbdot,dgrho
@@ -1572,11 +1574,14 @@
        dotdeltaf = grhob_t*(clxbdot - 3*adotoa*clxb) + grhoc_t*(clxcdot - 3*adotoa*clxc) + grhor_t*(clxrdot - 4*adotoa*clxr) + grhog_t*(clxgdot - 4*adotoa*clxg) !derivative of fluids' dgrho
        dphiprimeprime = yprime(EV%w_ix+1)
        cptr_to_cc = crosschecks(dgrho, dgq, dgpi, etak, dphi, dphiprime, dphiprimeprime, k, grho, gpres, dotdeltaf)
-       call C_F_POINTER(cptr_to_cc, cc, [2])
+       call C_F_POINTER(cptr_to_cc, cc, [7])
 
-       if (cc(1) .ge. 1d-5  .or. cc(1) .le. -1d-5.or. cc(2) .ge. 1d-5 .or. cc(2) .le. -1d-5) then
-          call GlobalError('The conservation equations are not verified', error_conservation)
-       end if
+!       do cross_i=1, 7
+!          if (cc(cross_i) .ge. 1d-4  .or. cc(cross_i) .le. -1d-4) then
+!             write (*,*) 'The conservation equation', cross_i, 'is not verified at a = ', a, ', and k = ', k, ' : ', cc(cross_i) 
+!             call GlobalError('Integration error: conservation equations not verified', error_conservation)
+!          end if
+!       end do
     end if
     
 
@@ -2134,6 +2139,7 @@
     real(dl) dtauda
     type(C_PTR) :: cptr_to_cc
     real(kind=C_DOUBLE), pointer :: cc(:)
+    integer OMP_GET_THREAD_NUM
 
     real(dl) dgq,grhob_t,grhor_t,grhoc_t,grhog_t,grhov_t,sigma,polter
     real(dl) qgdot,qrdot,pigdot,pirdot,vbdot,dgrho,adotoa
@@ -2168,7 +2174,6 @@
     end if
 
     !  Compute expansion rate from: grho 8*pi*rho*a**2
-
     grhob_t=grhob/a
     grhoc_t=grhoc/a
     grhor_t=grhornomass/a2
@@ -2202,7 +2207,6 @@
     else
        gpres=gpres+grhov_t*w_lam
     end if
-
 
     grho_matter=grhob_t+grhoc_t
 
@@ -2318,7 +2322,6 @@
        dgqgal_t = qgal(dgq, etak, dphi, dphiprime, k)
        dgq = dgq + dgqgal_t
     end if
-
 
     !  Get sigma (shear) and z from the constraints
     ! have to get z from eta for numerical stability
@@ -2521,7 +2524,6 @@
             end if
         end if
     end if ! no_nu_multpoles
-
 
     !Modified by Clement Leloup
     if (CP%use_galileon) then

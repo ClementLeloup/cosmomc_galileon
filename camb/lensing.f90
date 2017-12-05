@@ -39,6 +39,10 @@
     use Precision
     use ModelParams
     use AmlUtils
+
+    !Modified by Clement Leloup
+    use Errors
+
     implicit none
     integer, parameter :: lensing_method_curv_corr=1,lensing_method_flat_corr=2, &
         lensing_method_harmonic=3
@@ -214,9 +218,14 @@
             CTE(l) =  Cl_scalar(l,in,C_Cross)*fac
         end do
         if (Cphil3(10) > 1e-7) then
-            write (*,*) 'You need to normalize realistically to use lensing.'
-            write (*,*) 'see http://cosmocoffee.info/viewtopic.php?t=94'
-            call MpiStop()
+
+            !Modified by Clement Leloup
+            call GlobalError('You need to normalize realistically to use lensing', error_norm_lensing)
+            !print *, Cphil3(10)
+            !write (*,*) 'You need to normalize realistically to use lensing.'
+            !write (*,*) 'see http://cosmocoffee.info/viewtopic.php?t=94'
+            !call MpiStop()
+
         end if
         if (lmax > CP%Max_l) then
             l=CP%Max_l
@@ -585,9 +594,14 @@
         end do
 
         if (Cphil3(10) > 1e-7) then
-            write (*,*) 'You need to normalize realistically to use lensing.'
-            write (*,*) 'see http://cosmocoffee.info/viewtopic.php?t=94'
-            stop
+
+            !Modified by Clement Leloup
+            call GlobalError('You need to normalize realistically to use lensing', error_norm_lensing)
+            !print *, Cphil3(10)
+            !write (*,*) 'You need to normalize realistically to use lensing.'
+            !write (*,*) 'see http://cosmocoffee.info/viewtopic.php?t=94'
+            !stop
+
         end if
 
         lens_contrib=0
@@ -755,9 +769,14 @@
 
     RR = RR/2/fourpi
     if (RR(1) > 1e-5) then
-        write (*,*) 'You need to normalize realistically to use lensing.'
-        write (*,*) 'see http://cosmocoffee.info/viewtopic.php?t=94'
-        call MpiStop()
+
+        !Modified by Clement Leloup
+        call GlobalError('You need to normalize realistically to use lensing', error_norm_lensing)
+        !print *, RR(1)
+        !write (*,*) 'You need to normalize realistically to use lensing.'
+        !write (*,*) 'see http://cosmocoffee.info/viewtopic.php?t=94'
+        !call MpiStop()
+
     end if
     if (maxl > lmax_donelnfa) then
         !Get ln factorials

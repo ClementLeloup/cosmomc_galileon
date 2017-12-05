@@ -769,6 +769,7 @@
         AccuracyBoost = AccuracyLevel
         lAccuracyBoost = AccuracyLevel
         lSampleBoost = AccuracyLevel
+
         P%AccurateReionization = .true.
     end if
 

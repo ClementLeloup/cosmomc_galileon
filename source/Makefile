@@ -13,6 +13,7 @@ ifeq "$(ifortErr)" "0"
 #ifort; Can remove -xHost if your cluster is not uniform, or specify specific processor optimizations -x...
 
 F90C     = ifort
+
 #Can use this if mpif90 not picking up ifort:
 #MPIF90C ?= mpif90 -f90=ifort
 
@@ -46,7 +47,10 @@ FFLAGS+=  -axAVX,SEE4.2 -static-intel
 else
 ifneq ($(HOSTNAME),apollo-login)
 #Remove this if your cluster is not uniform (different CPUs)
+
+#Modified by Clement Leloup
 FFLAGS += -xHost
+
 endif
 endif
 endif

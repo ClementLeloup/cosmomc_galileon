@@ -123,8 +123,16 @@
 
     if (Params%WantCls .and. Params%WantScalars) then
         P = Params
+
+!!        !Modified by Clement Leloup
+!!        print *, "max_eta_k1 :", P%Max_eta_k, P%max_l
+
         if (HighAccuracyDefault) then
             P%Max_eta_k=max(min(P%max_l,3000)*2.5_dl,P%Max_eta_k)
+
+!!            !Modified by Clement Leloup
+!!            print *, "max_eta_k2 :", P%Max_eta_k
+
         end if
 
         if (separate) then

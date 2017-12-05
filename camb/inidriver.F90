@@ -165,8 +165,9 @@
         .or. P%PK_WantTransfer) then
     P%Transfer%high_precision=  Ini_Read_Logical('transfer_high_precision',.false.)
     else
-        P%transfer%high_precision = .false.
+	P%transfer%high_precision = .false.
     endif
+
     if (P%NonLinear/=NonLinear_none) call NonLinear_ReadParams(DefIni)
 
     if (P%PK_WantTransfer)  then

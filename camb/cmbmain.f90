@@ -52,6 +52,8 @@
     !    MT = matter transfer data
 
     ! Modules are defined in modules.f90, except GaugeInterface which gives the background and gauge-dependent
+
+
     ! perturbation equations, and InitialPower which provides the initial power spectrum.
 
     use precision
@@ -1001,19 +1003,10 @@
             else
                write (1,'(10E15.5)') tau, 0, 0, 0, 0, dgrho/((EV%q2)*2), 3*dgq*adotoa/(EV%q)/((EV%q2)*2), dgpi/(EV%q2)/2, phi, y(1)
             end if
-
-
-
-
-
-
-
-
-
-        end do
-        close(1)
-        stop
-    end if
+         end do
+         close(1)
+         stop
+      end if
 
     !     Begin timestep loop.
 
@@ -1037,8 +1030,8 @@
         .and. .not. WantLateTime .and. (.not.CP%WantTransfer.or.tau > tautf(CP%Transfer%num_redshifts))) then
             Src(EV%q_ix,1:SourceNum,j)=0
         else
-            !Integrate over time, calulate end point derivs and calc output
 
+            !Integrate over time, calulate end point derivs and calc output
             call GaugeInterface_EvolveScal(EV,tau,y,tauend,tol1,ind,c,w)
             if (global_error_flag/=0) return
 
@@ -1046,9 +1039,8 @@
 
             !Modified by Clement Leloup
             if (global_error_flag/=0) return
-            
-            Src(EV%q_ix,1:SourceNum,j)=sources
 
+            Src(EV%q_ix,1:SourceNum,j)=sources
             !     Calculation of transfer functions.
 101         if (CP%WantTransfer.and.itf <= CP%Transfer%num_redshifts) then
                 if (j < TimeSteps%npoints) then
@@ -1061,7 +1053,6 @@
 
                 if (abs(tau-tautf(itf)) < 1.e-5_dl) then
                     call outtransf(EV,y, tau, MT%TransferData(:,EV%q_ix,itf))
-
                     itf=itf+1
                     if (j < TimeSteps%npoints) then
                         if (itf <= CP%Transfer%num_redshifts.and. &
@@ -1163,7 +1154,6 @@
 
     if (DebugMsgs .and. Feedbacklevel > 0) &
         write(*,*) MT%num_q_trans-Evolve_q%npoints, 'transfer k values'
-
     !     loop over wavenumbers.
     !$OMP PARALLEL DO DEFAUlT(SHARED),SCHEDUlE(DYNAMIC), PRIVATE(EV, tau, q_ix)
     do q_ix=Evolve_q%npoints+1,MT%num_q_trans
@@ -1181,7 +1171,6 @@
         call GetTransfer(EV, tau)
     end do
     !$OMP END PARAllEl DO
-
     end subroutine TransferOut
 
     subroutine GetTransfer(EV,tau)
@@ -1227,6 +1216,7 @@
     do while(TimeSteps%points(first_step) < tautf(1))
         first_step = first_step + 1
     end do
+
     !$OMP PARAllEl DO DEFAUlT(SHARED), SCHEDUlE(STATIC), &
     !$OMP & PRIVATE(ik, i,scaling,ddScaling, tf_lo,tf_hi,tau,ho,a0,b0,ascale)
     do ik=1, Evolve_q%npoints
@@ -2497,6 +2487,7 @@
         end if
     end do
     !$OMP END PARALLEL DO
+
     end subroutine InterpolateCls
 
 

@@ -489,7 +489,7 @@ extern "C" int arrays_(double* omegar, double* omegam, double* H0in, double* c2i
   hubble.resize(intvar.size(), 999999);
   x.resize(intvar.size(), 999999);
 
-  printf("Tracker criterion : %.12f\n", fabs(c2-6*c3+18*c4-15*c5-6*cG));
+  // printf("Tracker criterion : %.12f\n", fabs(c2-6*c3+18*c4-15*c5-6*cG));
 
   // Integrate and fill hubble and x both when tracker and not tracker
   if(fabs(c2-6*c3+18*c4-15*c5-6*cG)>1e-8)
