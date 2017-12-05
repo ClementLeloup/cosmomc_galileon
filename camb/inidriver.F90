@@ -360,7 +360,6 @@
 100 stop 'Must give num_massive number of integer physical neutrinos for each eigenstate'
     end program driver
 
-
 #ifdef RUNIDLE
     !If in Windows and want to run with low priorty so can multitask
     subroutine SetIdle

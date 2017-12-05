@@ -208,7 +208,7 @@
             end if
 
             !Modified by Clement Leloup
-            print *, "je suis a la fin de ParamArrayToTheoryParams"
+            !print *, "je suis a la fin de ParamArrayToTheoryParams"
 
         end select
         class default
@@ -225,8 +225,8 @@
     integer error 
     real(mcp) try_bb, try_bt, try_tb, try_tt, step, lasttry
     real(mcp) theta_b, theta_t, DA, D_try
-!!$    integer j
-!!$    real(mcp) Hub, D_test
+!    integer j
+!    real(mcp) Hub, D_test
 
     select type(CosmoCalc=>this%Config%Calculator)
     class is (TCosmologyCalculator)
@@ -241,22 +241,22 @@
            try_tt = this%H0_max
            try_tb = this%H0_max
 
-           step = (try_tt - try_bb)*0.2
+           step = (try_tt - try_bb)*0.1
 
            call SetForH(Params,CMB,try_tb, .true.)
 
-!!$            print *, "ombh2 :", Params(1), "omch2 :", Params(2)
-!!$            open(unit=125,file="theta2.dat",status='replace')
-!!$            do j=0, 100
-!!$               Hub = this%H0_min + j*(this%H0_max - this%H0_min)/100
-!!$               call SetForH(Params,CMB,Hub, .false.,error)
-!!$               D_test = CosmoCalc%CMBToTheta(CMB, error)
-!!$               if(error==0)then
-!!$                  write(125,'(2F30.15)') Hub, D_test
-!!$               end if
-!!$            end do
-!!$            close(125)
-!!$            stop
+!            print *, "ombh2 :", Params(1), "omch2 :", Params(2)
+!            open(unit=125,file="theta2.dat",status='replace')
+!            do j=0, 100
+!               Hub = this%H0_min + j*(this%H0_max - this%H0_min)/100
+!               call SetForH(Params,CMB,Hub, .false.,error)
+!               D_test = CosmoCalc%CMBToTheta(CMB, error)
+!               if(error==0)then
+!                  write(125,'(2F30.15)') Hub, D_test
+!               end if
+!            end do
+!            close(125)
+!            stop
 
            ! Loop to find H0max
            do

@@ -127,12 +127,13 @@
     implicit none
     real(dl) dtauda
     real(dl), intent(IN) :: a
-    real(dl) rhonu,grhoa2, a2, a4, h2, hbar2
+    real(dl) rhonu,grhoa2, a2
     integer nu_i
 
     !Modified by Clement Leloup
     type(C_PTR) :: cptr_to_handx
     real(kind=C_DOUBLE), pointer :: handx(:)
+    real(dl) h2, hbar2, a4
     real(kind=C_DOUBLE) :: grhogal_t
 
     a2=a**2
@@ -141,7 +142,6 @@
 !!$    if (CP%use_galileon .and. a .ge. 9.99999d-7) then
     if (CP%use_galileon .and. a .ge. 1d-10) then
        a4=a2**2
-       
        cptr_to_handx = handxofa(a)
        call C_F_POINTER(cptr_to_handx, handx, [2])
        hbar2=handx(1)**2
@@ -191,7 +191,10 @@
 
     logical :: DoTensorNeutrinos = .true.
 
-    logical :: DoLateRadTruncation = .true.
+    !Modified by Clement Leloup
+    !logical :: DoLateRadTruncation = .true.
+    logical :: DoLateRadTruncation = .false.
+
     !if true, use smooth approx to radition perturbations after decoupling on
     !small scales, saving evolution of irrelevant osciallatory multipole equations
 
@@ -293,9 +296,6 @@
     integer ind
 
     call dverk(EV,EV%ScalEqsToPropagate,derivs,tau,y,tauend,tol1,ind,c,EV%nvar,w)
-
-!!$    !Modified by Clement Leloup
-!!$    print *, "start :", y(1), c(13), c(14), tol1
 
     if (ind==-3) then
 
@@ -1283,11 +1283,13 @@
 
     !Modified by Clement Leloup
     real(kind=C_DOUBLE) dgrhogal_t, dgqgal_t, dgpigal_t, pigaldot
-    real(kind=C_DOUBLE) grhogal_t, gpresgal_t
+    real(kind=C_DOUBLE) grhogal_t, gpresgal_t, xgal, hub
     real(dl) dphi, dphiprime, dphiprimeprime, dtauda
     real(dl) clxcdot, clxbdot, clxgdot, clxrdot, dotdeltaf
-    type(C_PTR) :: cptr_to_cc
-    real(kind=C_DOUBLE), pointer :: cc(:)
+    real(dl) dh, dx
+    type(C_PTR) :: cptr_to_cc, cptr_to_dhdx
+    real(kind=C_DOUBLE), pointer :: cc(:), dhdx(:)
+    integer cross_i
 
 
     real(dl) qgdot,pigdot,pirdot,vbdot,dgrho
@@ -1305,7 +1307,6 @@
 
     yprime = 0
     call derivs(EV,EV%ScalEqsToPropagate,tau,y,yprime)
-
 
     if (EV%TightCoupling .or. EV%no_phot_multpoles) then
         pol=0
@@ -1346,8 +1347,14 @@
     grho=grhob_t+grhoc_t+grhor_t+grhog_t
     gpres=(grhog_t+grhor_t)/3
     if (CP%use_galileon) then
-       grhogal_t=grhogal(a)
-       gpresgal_t=gpresgal()
+       xgal = GetX(a)
+       hub = a*GetH(a)
+       cptr_to_dhdx = GetdHdX(a, hub, xgal)
+       call C_F_POINTER(cptr_to_dhdx, dhdx, [2])
+       dh = dhdx(1)
+       dx = dhdx(2)
+       grhogal_t=grhogal(a, hub, xgal)
+       gpresgal_t=gpresgal(a, hub, xgal, dh, dx)
        grho=grho+grhogal_t
        gpres=gpres+gpresgal_t
     else 
@@ -1385,7 +1392,7 @@
 
        !Modified by Clement Leloup
        if (CP%use_galileon) then
-          dgrhogal_t = Chigal(dgrho, etak, dphi, dphiprime, k)
+          dgrhogal_t = Chigal(a, hub, xgal, dgrho, etak, dphi, dphiprime, k)
           z=(0.5_dl*(dgrho+dgrhogal_t)/k + etak)/adotoa
           dz= -adotoa*z - 0.5_dl*(dgrho+dgrhogal_t)/k
        else
@@ -1409,7 +1416,7 @@
 
        !Modified by Clement Leloup
        if (CP%use_galileon) then
-          dgrhogal_t = Chigal(dgrho, etak, dphi, dphiprime, k)
+          dgrhogal_t = Chigal(a, hub, xgal, dgrho, etak, dphi, dphiprime, k)
           z=(0.5_dl*(dgrho+dgrhogal_t)/k + etak)/adotoa
           dz= -adotoa*z - 0.5_dl*(dgrho+dgrhogal_t)/k
        else
@@ -1453,14 +1460,13 @@
 
     !Modified by Clement Leloup
     if (CP%use_galileon) then
-       dgrhogal_t = Chigal(dgrho, etak, dphi, dphiprime, k)
+       dgrhogal_t = Chigal(a, hub, xgal, dgrho, etak, dphi, dphiprime, k)
        dgrho = dgrho + dgrhogal_t
-       dgqgal_t = qgal(dgq, etak, dphi, dphiprime, k)
+       dgqgal_t = qgal(a, hub, xgal, dgq, etak, dphi, dphiprime, k)
        dgq = dgq + dgqgal_t
-       dgpigal_t = Pigal(dgrho, dgq, dgpi, etak, dphi, k)
+       dgpigal_t = Pigal(a, hub, xgal, dh, dx, dgrho, dgq, dgpi, etak, dphi, k)
        dgpi = dgpi + dgpigal_t
     end if
-
 
     !  Get sigma (shear) and z from the constraints
     !  have to get z from eta for numerical stability
@@ -1494,7 +1500,7 @@
     !Modified by Clement Leloup
     if (CP%use_galileon) then
        diff_rhopi = pidot_sum - (4*(dgpi-dgpigal_t)+dgpi_diff)*adotoa
-       pigaldot = pigalprime(dgrho, dgq, dgpi, diff_rhopi, etak, dphi, dphiprime, k, grho, gpres)
+       pigaldot = pigalprime(a, hub, xgal, dh, dx, dgrho, dgq, dgpi, diff_rhopi, etak, dphi, dphiprime, k, grho, gpres)
        diff_rhopi = diff_rhopi + pigaldot
     else
        diff_rhopi = pidot_sum - (4*dgpi+dgpi_diff)*adotoa
@@ -1571,14 +1577,20 @@
        clxgdot = yprime(EV%g_ix)
        dotdeltaf = grhob_t*(clxbdot - 3*adotoa*clxb) + grhoc_t*(clxcdot - 3*adotoa*clxc) + grhor_t*(clxrdot - 4*adotoa*clxr) + grhog_t*(clxgdot - 4*adotoa*clxg) !derivative of fluids' dgrho
        dphiprimeprime = yprime(EV%w_ix+1)
-       cptr_to_cc = crosschecks(dgrho, dgq, dgpi, etak, dphi, dphiprime, dphiprimeprime, k, grho, gpres, dotdeltaf)
-       call C_F_POINTER(cptr_to_cc, cc, [2])
+       cptr_to_cc = crosschecks(a, hub, xgal, dh, dx, dgrho, dgq, dgpi, etak, dphi, dphiprime, dphiprimeprime, k, grho, gpres, dotdeltaf)
+       call C_F_POINTER(cptr_to_cc, cc, [7])
 
-       if (cc(1) .ge. 1d-5  .or. cc(1) .le. -1d-5.or. cc(2) .ge. 1d-5 .or. cc(2) .le. -1d-5) then
-          call GlobalError('The conservation equations are not verified', error_conservation)
-       end if
+       !do cross_i=1, 7
+       !   if (cc(cross_i) .ge. 1d-4  .or. cc(cross_i) .le. -1d-4) then
+       !      write (*,*) 'The conservation equation', cross_i, 'is not verified at a = ', a, ', and k = ', k, ' : ', cc(cross_i) 
+       !      call GlobalError('Integration error: conservation equations not verified', error_conservation)
+       !   end if
+       !end do
+
+!       if (cc(1) .ge. 1d-5  .or. cc(1) .le. -1d-5.or. cc(2) .ge. 1d-5 .or. cc(2) .le. -1d-5) then
+!          call GlobalError('The conservation equations are not verified', error_conservation)
+!       end if
     end if
-    
 
     end subroutine output
 
@@ -2131,9 +2143,9 @@
     real(kind=C_DOUBLE) dphiprimeprime
     real(dl) dphi, dphiprime, dgqgal_t, dgrhogal_t, dgpigal_t
     real(dl) grhogal_t, gpresgal_t, dotdeltaf, dotdeltaqf
-    real(dl) dtauda
-    type(C_PTR) :: cptr_to_cc
-    real(kind=C_DOUBLE), pointer :: cc(:)
+    real(dl) dtauda, dh, dx, xgal, hub
+    type(C_PTR) :: cptr_to_dhdx
+    real(kind=C_DOUBLE), pointer :: dhdx(:)
 
     real(dl) dgq,grhob_t,grhor_t,grhoc_t,grhog_t,grhov_t,sigma,polter
     real(dl) qgdot,qrdot,pigdot,pirdot,vbdot,dgrho,adotoa
@@ -2168,15 +2180,20 @@
     end if
 
     !  Compute expansion rate from: grho 8*pi*rho*a**2
-
     grhob_t=grhob/a
     grhoc_t=grhoc/a
     grhor_t=grhornomass/a2
     grhog_t=grhog/a2
-    
+
     !Modified by Clement Leloup
-    if (CP%use_galileon) then
-       grhogal_t=grhogal(a)
+    if (CP%use_galileon) then       
+       xgal = GetX(a)
+       hub = a*GetH(a)
+       cptr_to_dhdx = GetdHdX(a, hub, xgal)
+       call C_F_POINTER(cptr_to_dhdx, dhdx, [2])
+       dh = dhdx(1)
+       dx = dhdx(2)
+       grhogal_t=grhogal(a, hub, xgal)
     else
        if (w_lam==-1._dl) then
           grhov_t=grhov*a2
@@ -2197,12 +2214,11 @@
     !Modified by Clement Leloup
     gpres=gpres+(grhog_t+grhor_t)/3
     if (CP%use_galileon) then
-       gpresgal_t=gpresgal()
+       gpresgal_t=gpresgal(a, hub, xgal, dh, dx)
        gpres=gpres+gpresgal_t
     else
        gpres=gpres+grhov_t*w_lam
     end if
-
 
     grho_matter=grhob_t+grhoc_t
 
@@ -2230,7 +2246,6 @@
        !adotoa=sqrt(grho/3)
         cothxor=1._dl/tau
     else
-       !Modified by Clement Leloup
        !Careful, no change here in case of non flat universe, should change to adapted 1/(a*dtauda)
         adotoa=sqrt((grho+grhok)/3._dl)
         cothxor=1._dl/tanfunc(tau/CP%r)/CP%r
@@ -2252,7 +2267,7 @@
 
        !Modified by Clement Leloup
        if (CP%use_galileon) then
-          dgrhogal_t = Chigal(dgrho, etak, dphi, dphiprime, k)
+          dgrhogal_t = Chigal(a, hub, xgal, dgrho, etak, dphi, dphiprime, k)
           z=(0.5_dl*(dgrho+dgrhogal_t)/k + etak)/adotoa
           dz= -adotoa*z - 0.5_dl*(dgrho+dgrhogal_t)/k
        else
@@ -2276,7 +2291,7 @@
 
            !Modified by Clement Leloup
            if (CP%use_galileon) then
-              dgrhogal_t = Chigal(dgrho, etak, dphi, dphiprime, k)
+              dgrhogal_t = Chigal(a, hub, xgal, dgrho, etak, dphi, dphiprime, k)
               z=(0.5_dl*(dgrho+dgrhogal_t)/k + etak)/adotoa
               dz= -adotoa*z - 0.5_dl*(dgrho+dgrhogal_t)/k
            else
@@ -2313,12 +2328,11 @@
 
     !Modified by Clement Leloup
     if(CP%use_galileon) then
-       dgrhogal_t = Chigal(dgrho, etak, dphi, dphiprime, k)
+       dgrhogal_t = Chigal(a, hub, xgal, dgrho, etak, dphi, dphiprime, k)
        dgrho = dgrho + dgrhogal_t
-       dgqgal_t = qgal(dgq, etak, dphi, dphiprime, k)
+       dgqgal_t = qgal(a, hub, xgal, dgq, etak, dphi, dphiprime, k)
        dgq = dgq + dgqgal_t
     end if
-
 
     !  Get sigma (shear) and z from the constraints
     ! have to get z from eta for numerical stability
@@ -2347,7 +2361,7 @@
         
         !Modified by Clement Leloup
         if (CP%use_galileon) then
-           dgpigal_t = Pigal(dgrho, dgq, dgpi, etak, dphi, k)
+           dgpigal_t = Pigal(a, hub, xgal, dh, dx, dgrho, dgq, dgpi, etak, dphi, k)
            dgpi = dgpi + dgpigal_t
         end if
 
@@ -2396,7 +2410,7 @@
 
             !Modified by Clement Leloup
             if (CP%use_galileon) then
-               dgpigal_t = Pigal(dgrho, dgq, dgs, etak, dphi, k)
+               dgpigal_t = Pigal(a, hub, xgal, dh, dx, dgrho, dgq, dgs, etak, dphi, k)
                dgs = dgs + dgpigal_t
             end if
 
@@ -2528,7 +2542,7 @@
        dotdeltaf = grhob_t*(clxbdot - 3*adotoa*clxb) + grhoc_t*(clxcdot - 3*adotoa*clxc) + grhor_t*(clxrdot - 4*adotoa*clxr) + grhog_t*(clxgdot - 4*adotoa*clxg) !derivative of fluids' dgrho
 
        ayprime(EV%w_ix) = dphiprime
-       dphiprimeprime = dphisecond(dgrho, dgq, etak, dphi, dphiprime, k, dotdeltaf)
+       dphiprimeprime = dphisecond(a, hub, xgal, dh, dx, dgrho, dgq, etak, dphi, dphiprime, k, dotdeltaf)
        ayprime(EV%w_ix+1) = dphiprimeprime
 
     else if (w_lam /= -1 .and. w_Perturb) then
@@ -2538,7 +2552,6 @@
         ayprime(EV%w_ix+1) = -adotoa*(1-3*cs2_lam)*vq + k*cs2_lam*clxq/(1+w_lam)
     end if
     
-
     !  Massive neutrino equations of motion.
     if (CP%Num_Nu_massive == 0) return
 
@@ -2620,7 +2633,9 @@
 
     !Modified by Clement Leloup
     real(kind=C_DOUBLE) grhogal_t, gpresgal_t
-    real(dl) dtauda
+    real(dl) dtauda, dh, dx, xgal, hub
+    type(C_PTR) :: cptr_to_dhdx
+    real(kind=C_DOUBLE), pointer :: dhdx(:)
 
     real(dl)  grhob_t,grhor_t,grhoc_t,grhog_t,grhov_t,polter
     real(dl) sigma, qg,pig, qr, vb, rhoq, vbdot, photbar, pb43
@@ -2668,8 +2683,14 @@
     grho=grhob_t+grhoc_t+grhor_t+grhog_t
     gpres=(grhog_t+grhor_t)/3._dl
     if (CP%use_galileon) then
-       grhogal_t=grhogal(a)
-       gpresgal_t=gpresgal()
+       xgal = GetX(a)
+       hub = GetH(a)
+       cptr_to_dhdx = GetdHdX(a, hub, xgal)
+       call C_F_POINTER(cptr_to_dhdx, dhdx, [2])
+       dh = dhdx(1)
+       dx = dhdx(2)
+       grhogal_t=grhogal(a, hub, xgal)
+       gpresgal_t=gpresgal(a, hub, xgal, dh, dx)
        grho=grho+grhogal_t
        gpres=gpres+gpresgal_t
     else
@@ -2814,7 +2835,9 @@
 
     !Modified by Clement Leloup
     real(kind=C_DOUBLE) grhogal_t
-    real(dl) dtauda
+    real(dl) dtauda, dh, dx, xgal, hub
+    type(C_PTR) :: cptr_to_dhdx
+    real(kind=C_DOUBLE), pointer :: dhdx(:)
 
     real(dl) Hchi,pinu, pig
     real(dl) k,k2,a,a2
@@ -2843,7 +2866,13 @@
     !Modified by Clement Leloup
     grho=grhob_t+grhoc_t+grhor_t+grhog_t
     if (CP%use_galileon) then
-       grhogal_t=grhogal(a)
+       xgal = GetX(a)
+       hub = GetH(a)
+       cptr_to_dhdx = GetdHdX(a, hub, xgal)
+       call C_F_POINTER(cptr_to_dhdx, dhdx, [2])
+       dh = dhdx(1)
+       dx = dhdx(2)
+       grhogal_t=grhogal(a, hub, xgal)
        grho=grho+grhogal_t
     else if (w_lam==-1._dl) then
         grhov_t=grhov*a2
