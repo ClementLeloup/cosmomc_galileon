@@ -72,6 +72,7 @@
      !Modified by Clement Leloup
      integer, parameter :: error_background_evolution=6
      integer, parameter :: error_conservation=7
+     integer, parameter :: error_norm_lensing=8
 
     contains
       

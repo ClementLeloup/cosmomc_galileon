@@ -11,7 +11,6 @@ ifeq "$(ifortErr)" "0"
 F90C     = ifort
 #FFLAGS = -openmp -fast -W0 -WB -fpp2 -vec_report0
 #FFLAGS = -openmp -fast -W0 -WB -fpp2 -qopt-report0 -qopt-report-phase=vec
-FFLAGS = -openmp -ipo -O3 -W0 -WB -fpp2 -qopt-report0 -qopt-report-phase=vec -CB
 
 #Modified by Clement Leloup
 FFLAGS = -openmp -ipo -O3 -W0 -WB -fpp2 -qopt-report0 -qopt-report-phase=vec -CB
