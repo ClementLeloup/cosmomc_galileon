@@ -39,6 +39,10 @@ module lensing
 use Precision
 use ModelParams
 use AmlUtils
+
+!Modified by Clement Leloup
+use Errors
+
 implicit none
  integer, parameter :: lensing_method_curv_corr=1,lensing_method_flat_corr=2, &
                        lensing_method_harmonic=3
@@ -211,10 +215,14 @@ subroutine CorrFuncFullSkyImpl(lmax)
     end do
     if (Cphil3(10) > 1e-7) then
      
-     write (*,*) 'You need to normalize realistically to use lensing.'
-     write (*,*) 'see http://cosmocoffee.info/viewtopic.php?t=94'
+       !Modified by Clement Leloup
+       !print *, Cphil3(10)
+       call GlobalError('You need to normalize realistically to use lensing', error_norm_lensing)
 
-     stop
+       !write (*,*) 'You need to normalize realistically to use lensing.'
+       !write (*,*) 'see http://cosmocoffee.info/viewtopic.php?t=94'
+
+       !stop
 
     end if
     if (lmax > CP%Max_l) then
@@ -581,11 +589,15 @@ subroutine CorrFuncFlatSky
     end do
 
     if (Cphil3(10) > 1e-7) then
+     
+       !Modified by Clement Leloup
+       !print *, Cphil3(10)
+       call GlobalError('You need to normalize realistically to use lensing', error_norm_lensing)
 
-     write (*,*) 'You need to normalize realistically to use lensing.'
-     write (*,*) 'see http://cosmocoffee.info/viewtopic.php?t=94'
+       !write (*,*) 'You need to normalize realistically to use lensing.'
+       !write (*,*) 'see http://cosmocoffee.info/viewtopic.php?t=94'
 
-     stop
+       !stop
 
     end if
 
@@ -754,11 +766,15 @@ subroutine BadHarmonic
 
   RR = RR/2/fourpi
   if (RR(1) > 1e-5) then
+     
+     !Modified by Clement Leloup
+     !print *, RR(1)
+     call GlobalError('You need to normalize realistically to use lensing', error_norm_lensing)
 
-     write (*,*) 'You need to normalize realistically to use lensing.'
-     write (*,*) 'see http://cosmocoffee.info/viewtopic.php?t=94'
+       !write (*,*) 'You need to normalize realistically to use lensing.'
+       !write (*,*) 'see http://cosmocoffee.info/viewtopic.php?t=94'
 
-     stop
+       !stop
 
   end if
   if (maxl > lmax_donelnfa) then 
