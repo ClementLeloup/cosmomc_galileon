@@ -207,9 +207,6 @@
                end if
             end if
 
-            !Modified by Clement Leloup
-            !print *, "je suis a la fin de ParamArrayToTheoryParams"
-
         end select
         class default
         call MpiStop('CosmologyParameterizations: Calculator is not TCosmologyCalculator')
@@ -223,10 +220,8 @@
     real(mcp) Params(:)
     Class(TTheoryParams), target :: CMB
     integer error 
-    real(mcp) try_bb, try_bt, try_tb, try_tt, step, lasttry
+    real(mcp) try_b, try_t, step, lasttry
     real(mcp) theta_b, theta_t, DA, D_try
-!    integer j
-!    real(mcp) Hub, D_test
 
     select type(CosmoCalc=>this%Config%Calculator)
     class is (TCosmologyCalculator)
@@ -236,89 +231,119 @@
            error = 0
            DA = Params(3)/100
 
-           try_bb = this%H0_min
-           try_bt = this%H0_min
-           try_tt = this%H0_max
-           try_tb = this%H0_max
+           try_b = this%H0_min
+           try_t = this%H0_max
+           theta_b = 0
+           theta_t = 0
 
-           step = (try_tt - try_bb)*0.1
+           ! step to explore the H0 interval
+           step = (this%H0_max - this%H0_min)*0.1
+           print *, "step :", step
 
-           call SetForH(Params,CMB,try_tb, .true.)
-
-!            print *, "ombh2 :", Params(1), "omch2 :", Params(2)
-!            open(unit=125,file="theta2.dat",status='replace')
-!            do j=0, 100
-!               Hub = this%H0_min + j*(this%H0_max - this%H0_min)/100
-!               call SetForH(Params,CMB,Hub, .false.,error)
-!               D_test = CosmoCalc%CMBToTheta(CMB, error)
-!               if(error==0)then
-!                  write(125,'(2F30.15)') Hub, D_test
-!               end if
-!            end do
-!            close(125)
-!            stop
-
-           ! Loop to find H0max
-           do
-              !Return if no H0 verifies theoretical constraints
-              if(try_tb < try_bb)then
+           ! Check if H0_max verifies all theoretical conditions
+           call SetForH(Params, CMB, try_t, .true.)
+           call CosmoCalc%SetParamsForBackground(CMB, error)
+           if(error==0)then
+              theta_t = CosmoCalc%CMBToTheta(CMB, error)
+              if(error/=0)then
                  cmb%H0=0
-                 if (Feedback>1) write(*,*) instance, 'This set of parameters is bad, no H0 allowed.'
                  return
               end if
+           end if
 
-              call SetForH(Params,CMB,(try_tb+try_tt)/2, .false.)
-              call CosmoCalc%SetParamsForBackground(CMB, error)
+           print *, "theta_t :", theta_t
+
+           ! Check if H0_min verifies all theoretical conditions
+           call SetForH(Params, CMB, try_b, .false.)
+           call CosmoCalc%SetParamsForBackground(CMB, error)
+           if(error==0)then
+              theta_b = CosmoCalc%CMBToTheta(CMB, error)
               if(error/=0)then
-                 if(try_tb==try_tt)then
-                    try_tt = try_tt - step
-                    try_tb = try_tt
-                 else
-                    try_tt = (try_tb+try_tt)/2
+                 cmb%H0=0
+                 return
+              end if
+           end if           
+           
+           print *, "theta_b :", theta_b
+
+
+           ! Two loops to get an interval in H0 on which to perform dichotomy
+           if(theta_t==0)then
+              do
+
+                 print *, "try_t", try_t
+
+                 if(step<0.01)then
+                    cmb%H0=0
+                    if (Feedback>1) write(*,*) instance, 'This set of parameters is bad, no H0 allowed.'
+                    return
                  end if
-              else
-                 if(try_tb==try_tt)then
-                    if(try_tb==this%H0_max)then
+                 try_t = try_t - step
+                 if(try_t < try_b)then
+                    cmb%H0=0
+                    return
+                 end if
+                 call SetForH(Params, CMB, try_t, .false.)
+                 call CosmoCalc%SetParamsForBackground(CMB, error)
+                 if(error==0)then
+                    theta_t = CosmoCalc%CMBToTheta(CMB, error)
+                    if(error/=0)then
+                       cmb%H0=0
+                       return
+                    end if
+                    if(theta_t > DA)then
                        exit
                     else
-                       try_tt = try_tt + step
+                       try_b = try_t
+                       try_t = try_t + step
+                       step = 0.5*step
                     end if
-                 else
-                    try_tb = (try_tb+try_tt)/2
                  end if
-              end if
-              if (0.001 < abs(try_tt - try_tb) .and. abs(try_tt - try_tb) < 0.5) exit
-           end do
+              end do
+           end if
 
-           ! Loop to find H0min
-           do
-              call SetForH(Params,CMB,(try_bb+try_bt)/2, .false.)
-              call CosmoCalc%SetParamsForBackground(CMB, error)
-              if(error/=0)then
-                 if(try_bb==try_bt)then
-                    try_bb = try_bb + step
-                    try_bt = try_bb
-                 else
-                    try_bb = (try_bb+try_bt)/2
+           ! Redefine step that may have changed in the previous loop
+           step = (this%H0_max - this%H0_min)*0.1
+
+           if(theta_b==0 .and. try_b==this%H0_min)then
+              do
+
+                 print *, "try_b", try_b
+
+                 if(step<0.01)then
+                    cmb%H0=0
+                    if (Feedback>1) write(*,*) instance, 'This set of parameters is bad, no H0 allowed.'
+                    return
                  end if
-              else
-                 if(try_bb==try_bt)then
-                    if(try_bt==this%H0_min)then
+                 try_b = try_b + step
+                 if(try_b > try_t)then
+                    cmb%H0=0
+                    return
+                 end if
+                 call SetForH(Params, CMB, try_b, .false.)
+                 call CosmoCalc%SetParamsForBackground(CMB, error)
+                 if(error==0)then
+                    theta_b = CosmoCalc%CMBToTheta(CMB, error)
+                    if(error/=0)then
+                       cmb%H0=0
+                       return
+                    end if
+                    if(theta_b < DA)then
                        exit
                     else
-                       try_bb = try_bb - step
+                       try_t = try_b
+                       try_b = try_b - step
+                       step = 0.5*step
                     end if
-                 else
-                    try_bt = (try_bb+try_bt)/2
                  end if
-              end if
-              if (0.001 < abs(try_bt - try_bb) .and. abs(try_bt - try_bb) < 0.5) exit
-           end do
+              end do
+           end if
 
-           call SetForH(Params,CMB,try_bt, .false.)
-           theta_b = CosmoCalc%CMBToTheta(CMB, error)
-           call SetForH(Params,CMB,try_tb, .false.)
-           theta_t = CosmoCalc%CMBToTheta(CMB, error)
+           !Now that boundaries are set, start dichotomy
+!           call SetForH(Params,CMB,try_bt, .false.)
+!           theta_b = CosmoCalc%CMBToTheta(CMB, error)
+!           call SetForH(Params,CMB,try_tb, .false.)
+!           theta_t = CosmoCalc%CMBToTheta(CMB, error)
 
            if (DA < theta_b .or. DA > theta_t) then
               if (Feedback>1) write(*,*) instance, 'Out of range finding H0: ', real(Params(3)), theta_b, theta_t
@@ -326,7 +351,7 @@
            else
               lasttry = -1
               do
-                 call SetForH(Params,CMB,(try_bt+try_tb)/2, .false.)
+                 call SetForH(Params,CMB,(try_b+try_t)/2, .false.)
                  D_try = CosmoCalc%CMBToTheta(CMB, error)
                  if(error/=0)then
                     cmb%H0=0
@@ -341,13 +366,13 @@
                  end if
 
                  if (D_try < DA) then
-                    try_bt = (try_bt+try_tb)/2
+                    try_b = (try_b+try_t)/2
                     theta_b = D_try
                  else
-                    try_tb = (try_bt+try_tb)/2
+                    try_t = (try_b+try_t)/2
                     theta_t = D_try
                  end if
-                 if (abs(D_try - lasttry)< 1e-7) exit
+                 if (abs(D_try - lasttry)/D_try< 1e-7) exit
                  lasttry = D_try
               end do
 
