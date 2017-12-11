@@ -2,8 +2,6 @@ module interface
   !use, intrinsic :: iso_c_binding
   use ISO_C_BINDING
   implicit none
-  
-  !real(kind=C_DOUBLE), BIND(C) :: intvar(30000), hubble(30000), xgalileon(30000)
 
   interface
      function arrays(omegar, omegam, H0in, c2in, c3in, c4in, cGin, grhormass, nu_masses, nu_mass_eigenstates) bind(C, name='arrays_')
@@ -13,12 +11,6 @@ module interface
        type(C_PTR), value :: grhormass, nu_masses
        integer :: arrays
     end function arrays
-
-    function handxofa(point) bind(C, name='handxofa_')
-      import C_PTR, C_DOUBLE, C_PTR
-      real(kind=C_DOUBLE) :: point
-      type(C_PTR) :: handxofa
-    end function handxofa
 
     function GetX(point) bind(C, name='GetX_')
       import C_DOUBLE, C_PTR
@@ -30,11 +22,10 @@ module interface
       real(kind=C_DOUBLE) :: point, GetH
     end function GetH
 
-    function GetdHdX(point, hcamb, xcamb) bind(C, name='GetdHdX_')
+    subroutine GetdHdX(point, hcamb, xcamb, dh, dx) bind(C, name='GetdHdX_')
       import C_PTR, C_DOUBLE
-      real(kind=C_DOUBLE) :: point, hcamb, xcamb
-      type(C_PTR) :: GetdHdX
-    end function GetdHdX
+      real(kind=C_DOUBLE) :: point, hcamb, xcamb, dh, dx
+    end subroutine GetdHdX
 
     function grhogal(point, hcamb, xcamb) bind(C, name='grhogal_')
       import C_DOUBLE
@@ -84,7 +75,7 @@ module interface
     end function crosschecks
 
     subroutine freegal() bind(C, name='freegal_')
-      !subroutine to free non-necessary memory after perturbations calculation
+      !subroutine to free non-necessary memory after perturbation calculations
     end subroutine freegal
   end interface
 end module interface

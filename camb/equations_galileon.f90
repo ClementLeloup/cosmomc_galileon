@@ -33,9 +33,6 @@
     ! http://cosmocoffee.info/viewtopic.php?t=811
     ! http://cosmocoffee.info/viewtopic.php?t=512
 
-    !Modified by Clement Leloup
-    !logical :: use_galileon = .false.
-
     contains
 
     subroutine DarkEnergy_ReadParams(Ini)
@@ -125,9 +122,7 @@
     integer nu_i
 
     !Modified by Clement Leloup
-    type(C_PTR) :: cptr_to_handx
-    real(kind=C_DOUBLE), pointer :: handx(:)
-    real(dl) h2, hbar2, a4
+    real(dl) hbar, a4
     real(kind=C_DOUBLE) :: grhogal_t
 
     a2=a**2
@@ -136,11 +131,8 @@
 !!    if (CP%use_galileon .and. a .ge. 9.99999d-7) then
     if (CP%use_galileon .and. a .ge. 1d-10) then
        a4=a2**2
-       cptr_to_handx = handxofa(a)
-       call C_F_POINTER(cptr_to_handx, handx, [2])
-       hbar2=handx(1)**2
-       h2=hbar2
-       grhoa2=a4*h2*grhom
+       hbar=GetH(a)
+       grhoa2=a4*grhom*hbar**2
     else 
        ! 8*pi*G*rho*a**4.
        grhoa2=grhok*a2+(grhoc+grhob)*a+grhog+grhornomass
@@ -318,6 +310,7 @@
     end if
 
     end function next_nu_nq
+
 
     recursive subroutine GaugeInterface_EvolveScal(EV,tau,y,tauend,tol1,ind,c,w)
     use ThermoData
@@ -1283,8 +1276,8 @@
     real(dl) dphi, dphiprime, dphiprimeprime, dtauda
     real(dl) clxcdot, clxbdot, clxgdot, clxrdot, dotdeltaf
     real(dl) dh, dx
-    type(C_PTR) :: cptr_to_cc, cptr_to_dhdx
-    real(kind=C_DOUBLE), pointer :: cc(:), dhdx(:)
+    type(C_PTR) :: cptr_to_cc
+    real(kind=C_DOUBLE), pointer :: cc(:)
     integer cross_i
 
 
@@ -1345,10 +1338,7 @@
     if (CP%use_galileon) then
        xgal = GetX(a)
        hub = a*GetH(a)
-       cptr_to_dhdx = GetdHdX(a, hub, xgal)
-       call C_F_POINTER(cptr_to_dhdx, dhdx, [2])
-       dh = dhdx(1)
-       dx = dhdx(2)
+       call GetdHdX(a, hub, xgal, dh, dx)
        grhogal_t=grhogal(a, hub, xgal)
        gpresgal_t=gpresgal(a, hub, xgal, dh, dx)
        grho=grho+grhogal_t
@@ -1563,7 +1553,6 @@
             sources(3) = 0
         end if
     end if
-
 
     !Modified by Clement Leloup
     !if (CP%use_galileon) then
@@ -2137,8 +2126,6 @@
     real(dl) dphi, dphiprime, dgqgal_t, dgrhogal_t, dgpigal_t
     real(dl) grhogal_t, gpresgal_t, dotdeltaf, dotdeltaqf
     real(dl) dtauda, dh, dx, xgal, hub
-    type(C_PTR) :: cptr_to_dhdx
-    real(kind=C_DOUBLE), pointer :: dhdx(:)
 
     real(dl) dgq,grhob_t,grhor_t,grhoc_t,grhog_t,grhov_t,sigma,polter
     real(dl) qgdot,qrdot,pigdot,pirdot,vbdot,dgrho,adotoa
@@ -2182,10 +2169,7 @@
     if (CP%use_galileon) then
        xgal = GetX(a)
        hub = a*GetH(a)
-       cptr_to_dhdx = GetdHdX(a, hub, xgal)
-       call C_F_POINTER(cptr_to_dhdx, dhdx, [2])
-       dh = dhdx(1)
-       dx = dhdx(2)
+       call GetdHdX(a, hub, xgal, dh, dx)
        grhogal_t=grhogal(a, hub, xgal)
     else
        if (w_lam==-1._dl) then
@@ -2626,8 +2610,6 @@
     !Modified by Clement Leloup
     real(kind=C_DOUBLE) grhogal_t, gpresgal_t
     real(dl) dtauda, dh, dx, xgal, hub
-    type(C_PTR) :: cptr_to_dhdx
-    real(kind=C_DOUBLE), pointer :: dhdx(:)
 
     real(dl)  grhob_t,grhor_t,grhoc_t,grhog_t,grhov_t,polter
     real(dl) sigma, qg,pig, qr, vb, rhoq, vbdot, photbar, pb43
@@ -2677,10 +2659,7 @@
     if (CP%use_galileon) then
        xgal = GetX(a)
        hub = GetH(a)
-       cptr_to_dhdx = GetdHdX(a, hub, xgal)
-       call C_F_POINTER(cptr_to_dhdx, dhdx, [2])
-       dh = dhdx(1)
-       dx = dhdx(2)
+       call GetdHdX(a, hub, xgal, dh, dx)
        grhogal_t=grhogal(a, hub, xgal)
        gpresgal_t=gpresgal(a, hub, xgal, dh, dx)
        grho=grho+grhogal_t
@@ -2828,8 +2807,6 @@
     !Modified by Clement Leloup
     real(kind=C_DOUBLE) grhogal_t
     real(dl) dtauda, dh, dx, xgal, hub
-    type(C_PTR) :: cptr_to_dhdx
-    real(kind=C_DOUBLE), pointer :: dhdx(:)
 
     real(dl) Hchi,pinu, pig
     real(dl) k,k2,a,a2
@@ -2860,10 +2837,7 @@
     if (CP%use_galileon) then
        xgal = GetX(a)
        hub = GetH(a)
-       cptr_to_dhdx = GetdHdX(a, hub, xgal)
-       call C_F_POINTER(cptr_to_dhdx, dhdx, [2])
-       dh = dhdx(1)
-       dx = dhdx(2)
+       call GetdHdX(a, hub, xgal, dh, dx)
        grhogal_t=grhogal(a, hub, xgal)
        grho=grho+grhogal_t
     else if (w_lam==-1._dl) then
