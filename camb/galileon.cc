@@ -117,7 +117,7 @@ double maxVec(std::vector<double> vec){
 
   Tested with Mathematica with c0 and y0 = 0.
  */
-inline int calcPertOmC2C3C4C5CGC0(double a, const double y[3]) {
+int calcPertOmC2C3C4C5CGC0(double a, const double y[3]) {
 
   fflush(stdout);
 
@@ -175,19 +175,19 @@ inline int calcPertOmC2C3C4C5CGC0(double a, const double y[3]) {
   // printf("a = %.12f \t Qs = %.12f \t cs2 = %.12f \t Qt = %.12f \t cT2 = %f \t OmegaPi = %.12f\n om = %.12f \t orad = %.12f \t c2 = %.12f \t c3 = %.12f \t c4 = %.12f \t cG = %.12f\n", a, noghost, cs2, noghostt, ct2, OmegaP, om, orad, c2, c3, c4, cG);
 
   if(noghost>-1e-8){
-    fprintf(stderr, "Error : scalar no ghost constraint not verified : a = %.12f \t Qs = %.12f\n", a, noghost);
+    // fprintf(stderr, "Error : scalar no ghost constraint not verified : a = %.12f \t Qs = %.12f\n", a, noghost);
     return 1;
   }
   if(cs2<0){
-    fprintf(stderr, "Error : complex sound speed : a = %.12f \t cs2 = %.12f\n", a, cs2);
+    // fprintf(stderr, "Error : complex sound speed : a = %.12f \t cs2 = %.12f\n", a, cs2);
     return 2;
   }
   if(noghostt < 0){
-    fprintf(stderr, "Error : tensorial no ghost constraint not verified : a = %.12f \t Qt = %.12f\n", a, noghostt);
+    // fprintf(stderr, "Error : tensorial no ghost constraint not verified : a = %.12f \t Qt = %.12f\n", a, noghostt);
     return 3;
   }
   if(ct2 < 0){
-    fprintf(stderr, "Error : Laplace stability condition not verified : a = %f \t cT2 = %f\n", a, ct2);
+    // fprintf(stderr, "Error : Laplace stability condition not verified : a = %f \t cT2 = %f\n", a, ct2);
     return 4;
   }
 
@@ -236,7 +236,7 @@ int calcValOmC2C3C4C5CGC0(double a, const double y[3], double f[3], void* params
       double rhonu = 0;
       double pnu = 0;
       double am = a*nu_masses[i];
-      // massivenu_mp_nu_background_(&am, &rhonu, &pnu);
+      massivenu_mp_nu_background_(&am, &rhonu, &pnu);
       lambda += grhormass[i]*pnu/(a2*a2*h0*h0);
       // printf("i : %d \t a : %.16f \t am : %.16f \t rhonu : %.16f \t lambda_numass : %.16f\n", i, a, am, rhonu, grhormass[i]*pnu/(a2*a2*h0*h0));
     }
@@ -328,6 +328,7 @@ int calcHubbleGalileon(double* grhormass, double* nu_masses, int* nu_mass_eigens
     }
 
     testPert = calcPertOmC2C3C4C5CGC0(intvar[i], y);
+    // testPert = calcPertOmC2C3C4C5CGC0(a, y);
     if(testPert != 0){
       return 7;
     }
@@ -468,16 +469,16 @@ extern "C" int arrays_(double* omegar, double* omegam, double* H0in, double* c2i
     intvar.push_back(amax*pow(q, i));
   }
 
-  printf("Number of points : %i\n", intvar.size());
-  fflush(stdout);
+  // printf("Number of points : %i\n", intvar.size());
+  // fflush(stdout);
 
-  printf("OmegaM0 = %.16f\nOmegaR0 = %.16f\nc0 = %.16f\nc2 = %.16f\nc3 = %.16f\nc4 = %.16f\nc5 = %.16f\ncG = %.16f\nh0 = %.16f km/s/Mpc\n", om, orad, c0, c2, c3, c4, c5, cG, h0*2.99792458e8/1000);
-  fflush(stdout);
+  // printf("OmegaM0 = %.16f\nOmegaR0 = %.16f\nc0 = %.16f\nc2 = %.16f\nc3 = %.16f\nc4 = %.16f\nc5 = %.16f\ncG = %.16f\nh0 = %.16f km/s/Mpc\n", om, orad, c0, c2, c3, c4, c5, cG, h0*2.99792458e8/1000);
+  // fflush(stdout);
 
   hubble.resize(intvar.size(), 999999);
   xgalileon.resize(intvar.size(), 999999);
 
-  printf("Tracker criterion : %.12f\n", fabs(c2-6*c3+18*c4-15*c5-6*cG));
+  // printf("Tracker criterion : %.12f\n", fabs(c2-6*c3+18*c4-15*c5-6*cG));
 
   // Integrate and fill hubble and x both when tracker and not tracker
   if(fabs(c2-6*c3+18*c4-15*c5-6*cG)>1e-8)
@@ -528,40 +529,20 @@ extern "C" int arrays_(double* omegar, double* omegam, double* H0in, double* c2i
   
 }
 
+// Function that returns x(a)
+extern "C" double GetX_(double* point){
 
-// Interpolate the values of x and h between the stored array points
-extern "C" double* handxofa_(double* point){
   if(intvar.size() == 0 || hubble.size() == 0 || xgalileon.size() == 0){
     printf("One of the global arrays is empty\n");
     exit(EXIT_FAILURE);
-  }
+  }  
 
   if((*point) < 0.0 || (*point) > 1.1){
     printf("Forbidden value of a : %.12f\n", (*point));
     exit(EXIT_FAILURE);
   }
 
-  // static double hx[2];
-  double* hx;
-  hx = (double*)malloc(2*sizeof(double));
-
-  double hxbis[2];
-
-  // Spline interpolation
-  hx[0] = gsl_spline_eval(spline_h, *point, acc);
-  hx[1] = gsl_spline_eval(spline_x, *point, acc);
-  // hx[0] = (hubble[i+1] - hubble[i])/(intvar[i+1]-intvar[i])*((*point) - intvar[i]) + hubble[i];
-  // hx[1] = (xgalileon[i+1] - xgalileon[i])/(intvar[i+1]-intvar[i])*((*point) - intvar[i]) + xgalileon[i];
-
-  return hx;
-
-}
-
-// Function that returns x(a)
-extern "C" double GetX_(double* point){
-  
-  double* hx = (*point >= 9.99999e-7) ? handxofa_(point) : 0;
-  double xgal = (*point >= 9.99999e-7) ? (*point)*(*(hx+1)) : 0; // here take xgal as a function of ln(a)
+  double xgal = (*point)*gsl_spline_eval(spline_x, *point, acc);
 
   return xgal;
 
@@ -569,20 +550,25 @@ extern "C" double GetX_(double* point){
 
 // Function that returns hbar(a)
 extern "C" double GetH_(double* point){
-  
-  double* hx = (*point >= 9.99999e-7) ? handxofa_(point) : 0;
-  double hbar = (*point >= 9.99999e-7) ? (*hx) : 0; // here take xgal as a function of ln(a)
+
+  if(intvar.size() == 0 || hubble.size() == 0 || xgalileon.size() == 0){
+    printf("One of the global arrays is empty\n");
+    exit(EXIT_FAILURE);
+  }  
+
+  if((*point) < 0.0 || (*point) > 1.1){
+    printf("Forbidden value of a : %.12f\n", (*point));
+    exit(EXIT_FAILURE);
+  }
+
+  double hbar = gsl_spline_eval(spline_h, *point, acc);
 
   return hbar;
 
 }
 
 // Functions that returns dh/dlna and dx/dlna
-extern "C" double* GetdHdX_(double* point, double* hcamb, double* xcamb){
-
-  // static double dhdx[2];
-  double* dhdx = NULL;
-  dhdx = (double*) malloc(2*sizeof(double));
+extern "C" double* GetdHdX_(double* point, double* hcamb, double* xcamb, double& dh, double& dx){
 
   // Define variables to save memory
   double a2 = (*point)*(*point);
@@ -607,10 +593,8 @@ extern "C" double* GetdHdX_(double* point, double* hcamb, double* xcamb){
   double lambda = 3*h2 + orad/(a2*a2) + c2/2*h2*xgal2 - 2*c3*h4*xgal3 + 7.5*c4*h6*xgal4 - 9*c5*h8*xgal5 - cG*h4*xgal2;
   double omega = 2*c3*h4*xgal2 - 12*c4*h6*xgal3 + 15*c5*h8*xgal4 + 4*cG*h4*(*xcamb);
 
-  dhdx[0] = (omega*gamma-lambda*beta)/(sigma*beta-alpha*omega); // dh/dlna
-  dhdx[1] = -(*xcamb)+(alpha*lambda-sigma*gamma)/(sigma*beta-alpha*omega); // dx/dlna
-
-  return dhdx;
+  dh = (omega*gamma-lambda*beta)/(sigma*beta-alpha*omega); // dh/dlna
+  dx = -(*xcamb)+(alpha*lambda-sigma*gamma)/(sigma*beta-alpha*omega); // dx/dlna
 
 }
 
