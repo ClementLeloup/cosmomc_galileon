@@ -1563,7 +1563,7 @@
     !$OMP & PRIVATE(am, rhonu,pnu)
     do i=1,nrhopn
     am=am_min*exp((i-1)*dlnam)
-    call nuRhoPres(am,rhonu,pnu)
+    call nuRhoPres(am,rhonu,pnu)   
     r1(i)=log(rhonu)
     p1(i)=log(pnu)
     end do
@@ -1637,7 +1637,6 @@
         pnu = 900._dl/120._dl/const*(zeta5-63._dl/4*Zeta7/am**2)/am
         return
     end if
-
 
     d=log(am/am_min)/dlnam+1._dl
     i=int(d)
