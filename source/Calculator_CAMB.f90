@@ -178,6 +178,8 @@
     class(CAMB_Calculator) :: this
     class(CMBParams) CMB
     Type(CAMBParams)  P
+
+    !Modified by Clement Leloup
     integer, optional :: error
 
     !set background parameters, but don't calculate thermal history

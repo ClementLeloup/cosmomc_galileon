@@ -5,8 +5,6 @@ tau           \tau
 omegak        \Omega_K
 mnu           \Sigma m_\nu    #sum of physical masses of standard neutrinos
 meffsterile   m_{\nu,{\rm{sterile}}}^{\rm{eff}}  #effective mass of sterile neutrino, \approx omeganuh2*94
-w             w			#equation of state parameter for scalar field dark energy today
-wa            w_a       #w_a variation
 nnu           N_{eff}   #effective number of neutrinos (only clearly defined for massless)
 yhe           Y_{He}    #Helium mass fraction (not used if bbn_consistency)    
 alpha1        \alpha_{-1} #correlated CDM isocurvature 
