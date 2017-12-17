@@ -64,10 +64,11 @@
 
 // using namespace std;
 
-// Global vectors of the integration variable (a or z), h and x
-std::vector<double> intvar;
-std::vector<double> hubble;
-std::vector<double> xgalileon;
+// // Global vectors of the integration variable (a or z), h and x
+// std::vector<double> intvar;
+// std::vector<double> hubble;
+// std::vector<double> xgalileon;
+int nb = 29999; // number of a points using q0
 
 // Interpolation tools
 gsl_interp_accel* acc;
@@ -121,10 +122,6 @@ int calcPertOmC2C3C4C5CGC0(double a, const double y[3]) {
 
   fflush(stdout);
 
-  double k1,k2,k3,k4,k5,k6;
-  double alpha,gamma,beta,sigma,lambda,omega,denom;
-  double dhdlna,dxdlna;
-
   // system from lna in z : 
   // y[0](lna) -> y[0](z)
   // y[1](lna) -> -(1+z)*y[1](z)
@@ -143,23 +140,23 @@ int calcPertOmC2C3C4C5CGC0(double a, const double y[3]) {
   double h4 = h2*h2;
 
   // The equations : 
-  alpha = c0*h + c2/6.0*prod - 3*c3*h*prod2 + 15*c4*h2*prod3 - 17.5*c5*h3*prod4 - 3.0*cG*h2*prod;
-  gamma = 2*c0*h2 + c2/3.0*h*prod - c3*h2*prod2 + 2.5*c5*h4*prod4 - 2.0*cG*h3*prod;
-  beta = -2*c3*h3*prod + c2/6.0*h2 + 9*c4*h4*prod2 - 10*c5*h4*h*prod3 - cG*h4;
-  sigma = 2.0*( 1.0 - 2*c0*y[2] )*h - 2.0*c0*prod + 2.0*c3*prod3 - 15.0*c4*h*prod4 + 21.0*c5*h2*prod5 + 6.0*cG*h*prod2;
-  lambda = 3.0*( 1 - 2*c0*y[2] )*h2 + orad/(a*a*a*a) - 2.0*c0*h*prod - 2.0*c3*h*prod3 + c2/2.0*prod2 + 7.5*c4*h2*prod4 - 9.0*c5*h3*prod5 - cG*h2*prod2;
-  omega = -2*c0*h2 + 2*c3*h2*prod2 - 12*c4*h3*prod3 + 15*c5*h4*prod4 + 4.0*cG*h3*prod;
-  denom = sigma*beta - alpha*omega;
+  double alpha = c0*h + c2/6.0*prod - 3*c3*h*prod2 + 15*c4*h2*prod3 - 17.5*c5*h3*prod4 - 3.0*cG*h2*prod;
+  double gamma = 2*c0*h2 + c2/3.0*h*prod - c3*h2*prod2 + 2.5*c5*h4*prod4 - 2.0*cG*h3*prod;
+  double beta = -2*c3*h3*prod + c2/6.0*h2 + 9*c4*h4*prod2 - 10*c5*h4*h*prod3 - cG*h4;
+  double sigma = 2.0*( 1.0 - 2*c0*y[2] )*h - 2.0*c0*prod + 2.0*c3*prod3 - 15.0*c4*h*prod4 + 21.0*c5*h2*prod5 + 6.0*cG*h*prod2;
+  double lambda = 3.0*( 1 - 2*c0*y[2] )*h2 + orad/(a*a*a*a) - 2.0*c0*h*prod - 2.0*c3*h*prod3 + c2/2.0*prod2 + 7.5*c4*h2*prod4 - 9.0*c5*h3*prod5 - cG*h2*prod2;
+  double omega = -2*c0*h2 + 2*c3*h2*prod2 - 12*c4*h3*prod3 + 15*c5*h4*prod4 + 4.0*cG*h3*prod;
+  double denom = sigma*beta - alpha*omega;
 
-  dhdlna = (omega*gamma - lambda*beta)/denom;
-  dxdlna = (alpha*lambda - sigma*gamma)/denom - xgal;
+  double dhdlna = (omega*gamma - lambda*beta)/denom;
+  double dxdlna = (alpha*lambda - sigma*gamma)/denom - xgal;
 
-  k1 = -6*c4*h*prod2*(dhdlna*xgal + h*dxdlna + prod/3.0) -2*c0 + c5*h2*prod3*(12*h*dxdlna + 15*dhdlna*xgal + 3*prod) + 2.0*cG*(dhdlna*prod+h2*dxdlna+h*prod);
-  k2 = -0.5*c2 + 6*c3*h*prod - 27*c4*h2*prod2 + 30*c5*h3*prod3 + 3.0*cG*h2;
-  k3 = -(1.0 - 2.0*c0*y[2]) - 0.5*c4*prod4 - 3*c5*h*prod4*(h*dxdlna + dhdlna*xgal) + cG*prod2;
-  k4 = -2.0*(1.0 - 2.0*c0*y[2]) + 3.0*c4*prod4 - 6*c5*h*prod5 - 2.0*cG*prod2;
-  k5 = 2*c3*prod2 - 12*c4*h*prod3 -2.0*c0 + 15.0*c5*h2*prod4 + 4.0*cG*h*prod;
-  k6 = 0.5*c2 - 2.0*c3*( h2*dxdlna + dhdlna*prod + 2*h*prod ) + c4*( 12*h3*prod*dxdlna + 18*h*prod2*dhdlna + 13*h2*prod2 ) - c5*( 18*h2*h2*prod2*dxdlna + 30*h2*prod3*dhdlna + 12*h3*prod3 ) - cG*( 2.0*h*dhdlna + 3.0*h2 );
+  double k1 = -6*c4*h*prod2*(dhdlna*xgal + h*dxdlna + prod/3.0) -2*c0 + c5*h2*prod3*(12*h*dxdlna + 15*dhdlna*xgal + 3*prod) + 2.0*cG*(dhdlna*prod+h2*dxdlna+h*prod);
+  double k2 = -0.5*c2 + 6*c3*h*prod - 27*c4*h2*prod2 + 30*c5*h3*prod3 + 3.0*cG*h2;
+  double k3 = -(1.0 - 2.0*c0*y[2]) - 0.5*c4*prod4 - 3*c5*h*prod4*(h*dxdlna + dhdlna*xgal) + cG*prod2;
+  double k4 = -2.0*(1.0 - 2.0*c0*y[2]) + 3.0*c4*prod4 - 6*c5*h*prod5 - 2.0*cG*prod2;
+  double k5 = 2*c3*prod2 - 12*c4*h*prod3 -2.0*c0 + 15.0*c5*h2*prod4 + 4.0*cG*h*prod;
+  double k6 = 0.5*c2 - 2.0*c3*( h2*dxdlna + dhdlna*prod + 2*h*prod ) + c4*( 12*h3*prod*dxdlna + 18*h*prod2*dhdlna + 13*h2*prod2 ) - c5*( 18*h2*h2*prod2*dxdlna + 30*h2*prod3*dhdlna + 12*h3*prod3 ) - cG*( 2.0*h*dhdlna + 3.0*h2 );
 
   double noghost = k2 + 1.5*k5*k5/k4;
   double cs2 = (4*k1*k4*k5 - 2*k3*k5*k5 - 2*k4*k4*k6)/(k4*(2*k4*k2 + 3*k5*k5));
@@ -194,22 +191,21 @@ int calcPertOmC2C3C4C5CGC0(double a, const double y[3]) {
   return 0;
 
 }
+
 /*
   \param[in] z Redshift
   \param[in] y Current value of integral : y[0] is h(z), y[1] is dpi/dz and y[2] is pi
   \param[in] params Array of parameters (\f$\Omega_m, c_2, c_3, c_4, c_5, c_G, c_0, orad, useacoord\f$)
   \param[out] f The value of the integral term : f[0] is dh/dz, f[1] is d^2pi/dz^2 and f[2] is dpi/dz
 */
-// int calcValOmC2C3C4C5CGC0(double a, const double y[3], double f[3], void* params){
 int calcValOmC2C3C4C5CGC0(double a, const double y[3], double f[3], void* params){
 
-  double alpha,gamma,beta,sigma,lambda,omega,OmegaP,OmegaM,OmTest;
   const double *in_params = static_cast<const double*>(params);
   // bool store_derivs = (int)in_params[0];
   double grhormass[5];
-  for(int i = 0; i<5; i++){ grhormass[i] = in_params[i]; }
+  for(int i = 0; i<5; i++){grhormass[i] = in_params[i];}
   double nu_masses[5];
-  for(int i = 0; i<5; i++){ nu_masses[i] = in_params[5+i]; }
+  for(int i = 0; i<5; i++){nu_masses[i] = in_params[5+i];}
   int nu_mass_eigenstates = in_params[10];
 
   double prod = a*y[0]*y[1]; // prod=h*x
@@ -224,11 +220,11 @@ int calcValOmC2C3C4C5CGC0(double a, const double y[3], double f[3], void* params
   double a2 = a*a;
 
   // The equations : 
-  alpha = c2/6.0*prod - 3*c3*h*prod2 + 15*c4*h2*prod3 - 17.5*c5*h3*prod4 - 3.0*cG*h2*prod;
-  gamma = c2/3.0*h*prod - c3*h2*prod2 + 2.5*c5*h4*prod4 - 2.0*cG*h3*prod;
-  beta = c2/6.0*h2 - 2*c3*h3*prod + 9*c4*h4*prod2 - 10*c5*h4*h*prod3 - cG*h4;
-  sigma = 2.0*h + 2.0*c3*prod3 - 15.0*c4*h*prod4 + 21.0*c5*h2*prod5 + 6.0*cG*h*prod2;
-  lambda = 3.0*h2 + orad/(a2*a2) + c2/2.0*prod2 - 2.0*c3*h*prod3 + 7.5*c4*h2*prod4 - 9.0*c5*h3*prod5 - cG*h2*prod2;
+  double alpha = c2/6.0*prod - 3*c3*h*prod2 + 15*c4*h2*prod3 - 17.5*c5*h3*prod4 - 3.0*cG*h2*prod;
+  double gamma = c2/3.0*h*prod - c3*h2*prod2 + 2.5*c5*h4*prod4 - 2.0*cG*h3*prod;
+  double beta = c2/6.0*h2 - 2*c3*h3*prod + 9*c4*h4*prod2 - 10*c5*h4*h*prod3 - cG*h4;
+  double sigma = 2.0*h + 2.0*c3*prod3 - 15.0*c4*h*prod4 + 21.0*c5*h2*prod5 + 6.0*cG*h*prod2;
+  double lambda = 3.0*h2 + orad/(a2*a2) + c2/2.0*prod2 - 2.0*c3*h*prod3 + 7.5*c4*h2*prod4 - 9.0*c5*h3*prod5 - cG*h2*prod2;
 
   // Contribution from massive neutrinos
   if(nu_mass_eigenstates>0){
@@ -242,7 +238,7 @@ int calcValOmC2C3C4C5CGC0(double a, const double y[3], double f[3], void* params
     }
   }
 
-  omega = 2*c3*h2*prod2 - 12*c4*h3*prod3 + 15*c5*h4*prod4 + 4.0*cG*h3*prod;
+  double omega = 2*c3*h2*prod2 - 12*c4*h3*prod3 + 15*c5*h4*prod4 + 4.0*cG*h3*prod;
 
   double denom = sigma*beta - alpha*omega;
   f[0] = (omega*gamma - lambda*beta) / (a*denom);
@@ -280,19 +276,13 @@ int calcValOmC2C3C4C5CGC0(double a, const double y[3], double f[3], void* params
 		       \status = 8 : failed to integrate
 		       \status = 9 : one of the global vectors is empty
 */
-int calcHubbleGalileon(double* grhormass, double* nu_masses, int* nu_mass_eigenstates){
+int calcHubbleGalileon(double* intvar, double* xgalileon, double* hubble, double* grhormass, double* nu_masses, int* nu_mass_eigenstates){
 
-  fflush(stdout);
+  // if(intvar.size() == 0 || hubble.size() == 0 || xgalileon.size() == 0){
+  //   printf("One of the global arrays is empty\n");
+  //   return 9;
+  // }
 
-  if(intvar.size() == 0 || hubble.size() == 0 || xgalileon.size() == 0){
-    printf("One of the global arrays is empty\n");
-    fflush(stdout);
-    return 9;
-  }
-
-  int testPert;
-  double h2, x1, x2, x3, a3;
-  double OmegaP, OmegaM, OmTest;
   double params[11]; // parameters for massive neutrinos
   for(int i = 0; i<5; i++){ params[i] = grhormass[i]; }
   for(int i = 0; i<5; i++){ params[5+i] = nu_masses[i]; }
@@ -306,10 +296,11 @@ int calcHubbleGalileon(double* grhormass, double* nu_masses, int* nu_mass_eigens
   sys.function = calcValOmC2C3C4C5CGC0;
   sys.dimension = 3;
   sys.params = &params;
-
+ 
   double y[3] = { 1.0, 1.0, 0.0 };  //Inital value of integral
   double a = 1;
-  int nstep = intvar.size();
+  // int nstep = min(hubble.size(),xgalileon.size());
+  int nstep = nb+1;
   double h = -1e-6; //Initial step guess
   double acurrtarg;
   int st;
@@ -327,23 +318,26 @@ int calcHubbleGalileon(double* grhormass, double* nu_masses, int* nu_mass_eigens
       return 8;
     }
 
-    testPert = calcPertOmC2C3C4C5CGC0(intvar[i], y);
-    // testPert = calcPertOmC2C3C4C5CGC0(a, y);
+    // testPert = calcPertOmC2C3C4C5CGC0(intvar[i], y);
+    int testPert = calcPertOmC2C3C4C5CGC0(a, y);
     if(testPert != 0){
+      gsl_odeiv_evolve_free(e);
+      gsl_odeiv_control_free(c);
+      gsl_odeiv_step_free(s);
       return 7;
     }
     
     // Variables to optimize computation
-    h2 = y[0]*y[0];
-    x1 = a*y[1];
-    x2 = x1*x1;
-    x3 = x2*x1;
-    a3 = a*a*a;
+    double h2 = y[0]*y[0];
+    double x1 = a*y[1];
+    double x2 = x1*x1;
+    double x3 = x2*x1;
+    double a3 = a*a*a;
 
     // Friedmann equation for background
-    OmegaP = (0.5*c2*x2 - 6.0*c3*h2*x3 + 22.5*c4*h2*h2*x2*x2 - 21.0*c5*h2*h2*h2*x3*x2 - 9.0*cG*h2*x2)/3.0;
+    double OmegaP = (0.5*c2*x2 - 6.0*c3*h2*x3 + 22.5*c4*h2*h2*x2*x2 - 21.0*c5*h2*h2*h2*x3*x2 - 9.0*cG*h2*x2)/3.0;
     // OmegaM = 1 - OmegaP - orad/(a3*intvar[i]*h2);
-    OmegaM = 1 - OmegaP - orad/(a3*a*h2);
+    double OmegaM = 1 - OmegaP - orad/(a3*a*h2);
 
     // Contribution from massive neutrinos
     if((*nu_mass_eigenstates)>0){
@@ -356,19 +350,25 @@ int calcHubbleGalileon(double* grhormass, double* nu_masses, int* nu_mass_eigens
       }
     }
 
-    OmTest = om/(a3*h2);
+    double OmTest = om/(a3*h2);
 
     // //For test
     // printf("Test on OmegaM : %f %f %f %f %f %f %f %f %f %f %f %f %f %f %.12f\n", om, orad, c2, c3, c4, c5, cG, c0, OmTest, OmegaM, orad/(a3*a*h2), OmegaP, a3*h2, intvar[i], fabs((OmegaM - OmTest)/OmTest));
     // // printf("lambda : %.12f\tusual : %.12f\tfrom massive neutrinos : %.12f\n", lambda, 3.0*h2 + orad/(a3*intvar[i]) - 2.0*c0*h2*x1 - 2.0*c3*h2*h2*x3 + c2/2.0*h2*x2 + 7.5*c4*h2*h2*h2*x2*x2 - 9.0*c5*h2*h2*h2*h2*x3*x2 - cG*h2*h2*x2, grhormass[0]*nuPres(intvar[i]*nu_masses[0])/(a3*intvar[i]*h0*h0));
 
     if(OmegaP<0){
-      fprintf(stderr, "Negative galileon energy density : a = %.12f \t %.12f\n", a, OmegaP);
+      // fprintf(stderr, "Negative galileon energy density : a = %.12f \t %.12f\n", a, OmegaP);
+      gsl_odeiv_evolve_free(e);
+      gsl_odeiv_control_free(c);
+      gsl_odeiv_step_free(s);
       return 5;
     }
 
     if ( fabs((OmegaM - OmTest)/OmTest)>1e-4 ) {
       fprintf(stderr, "Integration error : %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n", om, orad, c2, c3, c4, c5, cG, c0, OmTest, OmegaM, OmegaP, OmegaM - 1 + OmegaP + orad/(a3*intvar[i]*h2), a, fabs((OmegaM - OmTest)/OmTest));
+      gsl_odeiv_evolve_free(e);
+      gsl_odeiv_control_free(c);
+      gsl_odeiv_step_free(s);
       return 4;
     }
 
@@ -401,18 +401,19 @@ int calcHubbleGalileon(double* grhormass, double* nu_masses, int* nu_mass_eigens
   \param[out] table of h 
   \param[out] table of x
 */
-void calcHubbleTracker(){
+void calcHubbleTracker(double* intvar, double* xgalileon, double* hubble){
 
   fflush(stdout);
  
-  if(intvar.size() == 0 || hubble.size() == 0 || xgalileon.size() == 0){
-    printf("One of the global arrays is empty\n");
-    return ;
-  }
+  // if(intvar.size() == 0 || hubble.size() == 0 || xgalileon.size() == 0){
+  //   printf("One of the global arrays is empty\n");
+  //   return ;
+  // }
 
   double op = (c2/2.0 - 6.0*c3 + 22.5*c4 - 21.0*c5 - 9*cG )/3.0; //Omega_phi
 
-  int nstep = intvar.size();
+  // int nstep = intvar.size();
+  int nstep = nb+1;
   for(int i = 0; i < nstep; ++i){
    double a2 = intvar[i]*intvar[i];
     hubble[i] = sqrt(0.5*(om/(a2*intvar[i])+orad/(a2*a2)-3*cG)+sqrt(op/9+3*cG+0.25*pow(3*cG-om/(a2*intvar[i])-orad/(a2*a2),2))); // Analytical solution for H
@@ -428,10 +429,18 @@ extern "C" int arrays_(double* omegar, double* omegam, double* H0in, double* c2i
 
   fflush(stdout);
 
+  gsl_spline_free(spline_h);
+  gsl_spline_free(spline_x);
+  gsl_interp_accel_free(acc);
+
   // Clear three global vectors
-  intvar.clear();
-  hubble.clear();
-  xgalileon.clear();
+  // intvar.clear();
+  // hubble.clear();
+  // xgalileon.clear();
+
+  double intvar[nb+1];
+  double hubble[nb+1];
+  double xgalileon[nb+1];
 
   om = (*omegam);
   orad = (*omegar);
@@ -462,31 +471,33 @@ extern "C" int arrays_(double* omegar, double* omegam, double* H0in, double* c2i
   double amax = 1.;
 
   // Fill the vector of a with a geometric sequence
-  double nb = 30000; // number of a points using q0
+  // double nb = 30000; // number of a points using q0
   // double nb = 300000; // number of a points using q0
   double q = pow(amin/amax, 1./nb);
   for(int i = 0; i<=nb; i++){
-    intvar.push_back(amax*pow(q, i));
+    // intvar.push_back(amax*pow(q, i));
+    intvar[i] = amax*pow(q, i);
   }
 
   // printf("Number of points : %i\n", intvar.size());
+  // printf("Number of points : %i\n", nb+1);
   // fflush(stdout);
 
   // printf("OmegaM0 = %.16f\nOmegaR0 = %.16f\nc0 = %.16f\nc2 = %.16f\nc3 = %.16f\nc4 = %.16f\nc5 = %.16f\ncG = %.16f\nh0 = %.16f km/s/Mpc\n", om, orad, c0, c2, c3, c4, c5, cG, h0*2.99792458e8/1000);
   // fflush(stdout);
 
-  hubble.resize(intvar.size(), 999999);
-  xgalileon.resize(intvar.size(), 999999);
+  // hubble.resize(intvar.size(), 999999);
+  // xgalileon.resize(intvar.size(), 999999);
 
   // printf("Tracker criterion : %.12f\n", fabs(c2-6*c3+18*c4-15*c5-6*cG));
 
   // Integrate and fill hubble and x both when tracker and not tracker
   if(fabs(c2-6*c3+18*c4-15*c5-6*cG)>1e-8)
     {
-      status = calcHubbleGalileon(grhormass, nu_masses, nu_mass_eigenstates);
+      status = calcHubbleGalileon(intvar, xgalileon, hubble, grhormass, nu_masses, nu_mass_eigenstates);
     }
   else {
-    calcHubbleTracker();
+    calcHubbleTracker(intvar, xgalileon, hubble);
   }
 
   printf("status = %i\n", status);
@@ -513,17 +524,18 @@ extern "C" int arrays_(double* omegar, double* omegam, double* H0in, double* c2i
   //   double p = c2/2*pow(hubble[i], 2)*pow(intvar[i+1]*x[i], 2) + 2*c3*pow(hubble[i], 3)*pow(intvar[i+1]*x[i], 2)*(h_prime*intvar[i+1]*x[i]+x_prime*hubble[i]) - c4*(4.5*pow(hubble[i], 6)*pow(intvar[i+1]*x[i], 4) + 12*pow(hubble[i], 6)*pow(intvar[i+1]*x[i], 3)*x_prime + 15*pow(hubble[i], 5)*pow(intvar[i+1]*x[i], 4)*h_prime) + 3*c5*pow(hubble[i], 7)*pow(intvar[i+1]*x[i], 4)*(5*hubble[i]*x_prime+7*h_prime*intvar[i+1]*x[i]+2*hubble[i]*intvar[i+1]*x[i]) + cG*(6*pow(hubble[i], 3)*pow(intvar[i+1]*x[i], 2)*h_prime + 4*pow(hubble[i], 4)*intvar[i+1]*x[i]*x_prime + 3*pow(hubble[i], 4)*pow(intvar[i+1]*x[i], 2));
   // }
 
-  double hubble_interp[hubble.size()];
-  double x_interp[xgalileon.size()];
-  double intvar_interp[hubble.size()];
-  std::copy(hubble.rbegin(), hubble.rend(), hubble_interp);
-  std::copy(xgalileon.rbegin(), xgalileon.rend(), x_interp);
-  std::copy(intvar.rbegin(), intvar.rend(), intvar_interp);
-  
-  spline_h = gsl_spline_alloc(gsl_interp_cspline, hubble.size());
-  spline_x = gsl_spline_alloc(gsl_interp_cspline, xgalileon.size());  
-  gsl_spline_init(spline_h, intvar_interp, hubble_interp, hubble.size());
-  gsl_spline_init(spline_x, intvar_interp, x_interp, xgalileon.size());
+  spline_h = gsl_spline_alloc(gsl_interp_cspline, nb+1);
+  spline_x = gsl_spline_alloc(gsl_interp_cspline, nb+1);
+  double intvar_interp[nb+1];
+  double hubble_interp[nb+1];
+  double xgalileon_interp[nb+1];
+  for(int i = 0; i<=nb; i++){
+    intvar_interp[i] = intvar[nb-i];
+    hubble_interp[i] = hubble[nb-i];
+    xgalileon_interp[i] = xgalileon[nb-i];
+  }
+  gsl_spline_init(spline_h, intvar_interp, hubble_interp, nb+1);
+  gsl_spline_init(spline_x, intvar_interp, xgalileon_interp, nb+1);
 
   return status;
   
@@ -532,10 +544,10 @@ extern "C" int arrays_(double* omegar, double* omegam, double* H0in, double* c2i
 // Function that returns x(a)
 extern "C" double GetX_(double* point){
 
-  if(intvar.size() == 0 || hubble.size() == 0 || xgalileon.size() == 0){
-    printf("One of the global arrays is empty\n");
-    exit(EXIT_FAILURE);
-  }  
+  // if(intvar.size() == 0 || hubble.size() == 0 || xgalileon.size() == 0){
+  //   printf("One of the global arrays is empty\n");
+  //   exit(EXIT_FAILURE);
+  // }  
 
   if((*point) < 0.0 || (*point) > 1.1){
     printf("Forbidden value of a : %.12f\n", (*point));
@@ -551,10 +563,10 @@ extern "C" double GetX_(double* point){
 // Function that returns hbar(a)
 extern "C" double GetH_(double* point){
 
-  if(intvar.size() == 0 || hubble.size() == 0 || xgalileon.size() == 0){
-    printf("One of the global arrays is empty\n");
-    exit(EXIT_FAILURE);
-  }  
+  // if(intvar.size() == 0 || hubble.size() == 0 || xgalileon.size() == 0){
+  //   printf("One of the global arrays is empty\n");
+  //   exit(EXIT_FAILURE);
+  // }  
 
   if((*point) < 0.0 || (*point) > 1.1){
     printf("Forbidden value of a : %.12f\n", (*point));
@@ -1055,9 +1067,9 @@ extern "C" void freegal_(){
 
   // printf("before -> size a : %i, size hubble : %i, size x : %i\n", intvar.size(), hubble.size(), xgalileon.size());
 
-  intvar = std::vector<double>();
-  hubble = std::vector<double>();
-  xgalileon = std::vector<double>();
+  // intvar = std::vector<double>();
+  // hubble = std::vector<double>();
+  // xgalileon = std::vector<double>();
 
   // printf("after -> size a : %i, size hubble : %i, size x : %i\n", intvar.size(), hubble.size(), xgalileon.size());
 
@@ -1080,13 +1092,13 @@ int test(){
   // c4 = -0.772;
   // cG = 0;
 
-  // Scenario 2
-  om = 0.275;
-  h0 = 73.6*1000/(2.99792458e8);
-  c2 = -4.1;
-  c3 = -1.5;
-  c4 = -0.78;
-  cG = 0.;
+  // // Scenario 2
+  // om = 0.275;
+  // h0 = 73.6*1000/(2.99792458e8);
+  // c2 = -4.1;
+  // c3 = -1.5;
+  // c4 = -0.78;
+  // cG = 0.;
 
   // // Scenario 3
   // om = 0.280;
@@ -1096,13 +1108,13 @@ int test(){
   // c4 = -0.61;
   // cG = 0.15;
 
-  // // Scenario 4
-  // om = 0.275;
-  // h0 = 72.7*1000/(2.99792458e8);
-  // c2 = -4.1;
-  // c3 = -3.375;
-  // c4 = -0.775;
-  // cG = 0.;
+  // Scenario 4
+  om = 0.275;
+  h0 = 72.7*1000/(2.99792458e8);
+  c2 = -4.1;
+  c3 = -3.375;
+  c4 = -0.775;
+  cG = 0.;
 
   double grhormass[] = {0,0,0,0,0};
   double nu_masses[] = {0,0,0,0,0};
@@ -1115,20 +1127,11 @@ int test(){
 
   arrays_(&orad, &om, &h0, &c2, &c3, &c4, &cG, grhormass, nu_masses, &nu_mass_eigenstates);
 
-  double* hx1 = handxofa_(&a1);
-  const double y1[] = {(*hx1), *(hx1+1), 0};
-
-  double* hx2 = handxofa_(&a2);
-  const double y2[] = {(*hx2), *(hx2+1), 0};
-
-  double* hx3 = handxofa_(&a3);
-  const double y3[] = {(*hx3), *(hx3+1), 0};
-
-  double* hx4 = handxofa_(&a4);
-  const double y4[] = {(*hx4), *(hx4+1), 0};
-
-  double* hx5 = handxofa_(&a5);
-  const double y5[] = {(*hx5), *(hx5+1), 0};
+  const double y1[] = {GetH_(&a1), GetX_(&a1), 0};
+  const double y2[] = {GetH_(&a1), GetX_(&a1), 0};
+  const double y3[] = {GetH_(&a1), GetX_(&a1), 0};
+  const double y4[] = {GetH_(&a1), GetX_(&a1), 0};
+  const double y5[] = {GetH_(&a1), GetX_(&a1), 0};
 
   calcPertOmC2C3C4C5CGC0(a1, y1);
   calcPertOmC2C3C4C5CGC0(a2, y2);
