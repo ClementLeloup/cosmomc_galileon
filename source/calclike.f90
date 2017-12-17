@@ -297,6 +297,7 @@
     real(mcp) LogLike
 
     call this%SetTheoryParams(Params)
+
     LogLike = this%Config%Parameterization%NonBaseParameterPriors(this%TheoryParams)
     if (LogLike == logZero) return
     if (.not. Params%validInfo) then
@@ -364,18 +365,23 @@
     logical :: do_like(DataLikelihoods%count)
     Type(TTimer) Timer
 
+    !Modified by Clement Leloup
+    integer error
+
     if (present(likelihood_Mask)) then
         do_like = likelihood_mask
     else
         do_like = .true.
     end if
     logLike = logZero
-    call this%GetTheoryForLike(null()) !chance to initalize
+    call this%GetTheoryForLike(null(), error) !chance to initalize
+    if(error/=0) return
     do i= 1, DataLikelihoods%count
         if (do_like(i)) then
             like => DataLikelihoods%Item(i)
             if (any(like%dependent_params(1:num_params) .and. this%changeMask(1:num_params) )) then
-                call this%GetTheoryForLike(like)
+                call this%GetTheoryForLike(like, error)
+                if(error/=0) return
                 if (this%timing) call Timer%Start
                 itemLike = like%GetLogLike(this%TheoryParams, this%Params%Theory, this%Params%P(like%nuisance_indices))
                 if (this%timing) call Timer%WriteTime('Time for '//trim(like%name))
@@ -398,9 +404,14 @@
 
     end function TheoryLike_CalculateRequiredTheoryChanges
 
-    subroutine TheoryLike_GetTheoryForLike(this,Like)
+    !Modified by Clement Leloup
+    !subroutine TheoryLike_GetTheoryForLike(this,Like)
+    subroutine TheoryLike_GetTheoryForLike(this,Like, error)
     class(TTheoryLikeCalculator) :: this
     class(TDataLikelihood), pointer :: like
+    
+    !Modified by Clement Leloup
+    integer, optional :: error
 
     !If needed, likelihood specific calculation/initalization; like=null for first initial call
     end subroutine TheoryLike_GetTheoryForLike

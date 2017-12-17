@@ -274,11 +274,6 @@
 
         call FreeSourceMem
 
-        !Modified by Clement Leloup
-        if(CP%use_galileon) then
-           call freegal
-        end if
-
         !Final calculations for CMB output unless want the Cl transfer functions only.
 
         if (.not. CP%OnlyTransfers .and. global_error_flag==0) &

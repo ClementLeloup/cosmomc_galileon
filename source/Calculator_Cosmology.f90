@@ -55,7 +55,10 @@
     class(TCosmoTheoryPredictions) Theory
     integer error
 
-    call this%SetParamsForBackground(CMB)
+    !Modified by Clement Leloup
+    !call this%SetParamsForBackground(CMB)
+    call this%SetParamsForBackground(CMB, error)
+
     select type (Param => this%Config%Parameterization)
     class is (TCosmologyParameterization)
         if (.not. Param%late_time_only) then
