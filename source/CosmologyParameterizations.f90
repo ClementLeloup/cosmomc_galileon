@@ -81,7 +81,7 @@
     !Modified by Clement Leloup
     !set number of hard parameters, number of initial power spectrum parameters
     if(CosmoSettings%use_galileon) then
-       call this%SetTheoryParameterNumbers(20,last_power_index)
+       call this%SetTheoryParameterNumbers(18,last_power_index)
     else
        call this%SetTheoryParameterNumbers(16,last_power_index)
     end if
@@ -238,7 +238,7 @@
 
            ! step to explore the H0 interval
            step = (this%H0_max - this%H0_min)*0.1
-           print *, "step :", step
+           !print *, "step :", step
 
            ! Check if H0_max verifies all theoretical conditions
            call SetForH(Params, CMB, try_t, .true.)
@@ -251,7 +251,7 @@
               end if
            end if
 
-           print *, "theta_t :", theta_t
+           !print *, "theta_t :", theta_t
 
            ! Check if H0_min verifies all theoretical conditions
            call SetForH(Params, CMB, try_b, .false.)
@@ -264,14 +264,13 @@
               end if
            end if           
            
-           print *, "theta_b :", theta_b
-
+           !print *, "theta_b :", theta_b
 
            ! Two loops to get an interval in H0 on which to perform dichotomy
            if(theta_t==0)then
               do
 
-                 print *, "try_t", try_t
+                 !print *, "try_t", try_t
 
                  if(step<0.01)then
                     cmb%H0=0
@@ -308,7 +307,7 @@
            if(theta_b==0 .and. try_b==this%H0_min)then
               do
 
-                 print *, "try_b", try_b
+                 !print *, "try_b", try_b
 
                  if(step<0.01)then
                     cmb%H0=0
@@ -532,9 +531,16 @@
         CMB%ombh2 = Params(1)
         CMB%tau = params(4) !tau, set zre later
         CMB%Omk = Params(5)
-        CMB%w = Params(8)
-        CMB%wa = Params(9)
-        CMB%nnu = Params(10) !3.046
+
+        !Modified by Clement Leloup
+        if(CosmoSettings%use_galileon)then
+           CMB%nnu = Params(8) !3.046
+        else
+           CMB%w = Params(8)
+           CMB%wa = Params(9)
+           CMB%nnu = Params(10) !3.046
+        end if
+
         !Params(6) is now mnu, where mnu is physical standard neutrino mass and we assume standard heating
         CMB%omnuh2=Params(6)/neutrino_mass_fac*(standard_neutrino_neff/3)**0.75_mcp
         !Params(7) is mass_sterile*Neff_sterile
@@ -558,14 +564,42 @@
             CMB%YHe = BBN_YHe%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff,error)
         else
             !e.g. set from free parameter..
-            CMB%YHe  =Params(11)
+
+           !Modified by Clement Leloup
+           if(CosmoSettings%use_galileon)then
+              CMB%YHe = Params(9)
+           else
+              CMB%YHe = Params(11)
+           end if
+
         end if
 
-        CMB%iso_cdm_correlated =  Params(12)
-        CMB%zre_delta = Params(13)
-        CMB%ALens = Params(14)
-        CMB%ALensf = Params(15)
-        CMB%fdm = Params(16)
+        !Modified by Clement Leloup
+        if(CosmoSettings%use_galileon)then
+           CMB%iso_cdm_correlated =  Params(10)
+           CMB%zre_delta = Params(11)
+           CMB%ALens = Params(12)
+           CMB%ALensf = Params(13)
+           CMB%fdm = Params(14)
+        else
+           CMB%iso_cdm_correlated =  Params(12)
+           CMB%zre_delta = Params(13)
+           CMB%ALens = Params(14)
+           CMB%ALensf = Params(15)
+           CMB%fdm = Params(16)
+        end if
+
+        !Modified by Clement Leloup
+    if (CosmoSettings%use_galileon) then
+       CMB%c2 = Params(15)
+       CMB%c3 = Params(16)
+       CMB%c4 = Params(17)
+       CMB%cG = Params(18)
+       grhog = kappa/c**2*4*sigma_boltz/c**3*COBE_CMBTemp**4*Mpc**2
+       omrad = (1 + 7._mcp/8*(4._mcp/11)**(4._mcp/3)*CMB%nnu)*grhog/3*CMB%H0**2/c**2*1000**2
+       CMB%c5 = 1./7*(-1 + CMB%omb + CMB%omdm + omrad + CMB%c2/6 - 2*CMB%c3 + 7.5*CMB%c4 - 3*CMB%cG) ! Careful here, radiation hard coded
+    end if
+
         call SetFast(Params,CMB)
     end if
 
@@ -576,17 +610,6 @@
     CMB%omnu = CMB%omnuh2/h2
     CMB%omdm = CMB%omdmh2/h2
     CMB%omv = 1- CMB%omk - CMB%omb - CMB%omdm
-
-    !Modified by Clement Leloup
-    if (CosmoSettings%use_galileon) then
-       CMB%c2 = Params(17)
-       CMB%c3 = Params(18)
-       CMB%c4 = Params(19)
-       CMB%cG = Params(20)
-       grhog = kappa/c**2*4*sigma_boltz/c**3*COBE_CMBTemp**4*Mpc**2
-       omrad = (1 + 7._mcp/8*(4._mcp/11)**(4._mcp/3)*CMB%nnu)*grhog/3*CMB%H0**2/c**2*1000**2
-       CMB%c5 = 1./7*(-1 + CMB%omb + CMB%omdm + omrad + CMB%c2/6 - 2*CMB%c3 + 7.5*CMB%c4 - 3*CMB%cG) ! Careful here, radiation hard coded
-    end if
 
     end subroutine SetForH
 
@@ -599,7 +622,13 @@
 
     this%late_time_only = .true.
 
-    call this%Initialize(Ini,Names, 'paramnames/params_background.paramnames', Config)
+    !Modified by Clement Leloup
+    if(CosmoSettings%use_galileon)then
+       call this%Initialize(Ini,Names, 'paramnames/params_background_galileon.paramnames', Config)
+    else
+       call this%Initialize(Ini,Names, 'paramnames/params_background.paramnames', Config)
+    end if
+    
     call this%SetTheoryParameterNumbers(Names%num_MCMC,0)
 
     end subroutine BK_Init
@@ -627,8 +656,12 @@
         CMB%omk = Params(3)
         CMB%omnuh2=Params(4)/neutrino_mass_fac*(standard_neutrino_neff/3)**0.75_mcp
         CMB%w =    Params(5)
-        CMB%wa =    Params(6)
-        CMB%nnu =    Params(7)
+
+        !Modified by Clement Leloup
+        if(.not. CosmoSettings%use_galileon)then
+           CMB%wa =    Params(6)
+           CMB%nnu =    Params(7)
+        end if
 
         CMB%h=CMB%H0/100
         h2 = CMB%h**2
@@ -646,6 +679,10 @@
 
         !Modified by Clement Leloup
         if (CosmoSettings%use_galileon) then
+           CMB%c2 = Params(6)
+           CMB%c3 = Params(7)
+           CMB%c4 = Params(8)
+           CMB%cG = Params(9)
            grhog = kappa/c**2*4*sigma_boltz/c**3*COBE_CMBTemp**4*Mpc**2
            omrad = (1 + 7._mcp/8*(4._mcp/11)**(4._mcp/3)*CMB%nnu)*grhog/3*CMB%H0**2/c**2*1000**2
            CMB%c5 = 1./7*(-1 + CMB%omb + CMB%omdm + omrad + CMB%c2/6 - 2*CMB%c3 + 7.5*CMB%c4 - 3*CMB%cG) ! Careful here, radiation hard coded

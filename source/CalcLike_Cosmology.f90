@@ -34,10 +34,15 @@
     end select
     end subroutine TCosmoLikeCalculator_InitConfig
 
-    subroutine Cosmo_GetTheoryForLike(this,Like)
+    !Modified by Clement Leloup
+    !subroutine Cosmo_GetTheoryForLike(this,Like)
+    subroutine Cosmo_GetTheoryForLike(this,Like, error)
     class(TCosmoLikeCalculator) :: this
     class(TDataLikelihood), pointer :: like
     logical, save :: backgroundSet
+
+    !Modified by Clement Leloup
+    integer, optional :: error
 
     if (.not. associated(like)) then
         !initialize
@@ -48,7 +53,7 @@
     if (any(like%dependent_params(1:num_hard)) .and. .not. backgroundSet) then
         select type (CMB=>this%TheoryParams)
         class is (CMBParams)
-            call this%CosmoCalc%SetParamsForBackground(CMB)
+            call this%CosmoCalc%SetParamsForBackground(CMB, error)
         end select
         backgroundSet = .true.
     end if

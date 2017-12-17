@@ -1,0 +1,11 @@
+omegam        \Omega_m
+H0            H_0
+omegak        \Omega_K
+mnu           \Sigma m_\nu		
+nnu           N_{eff}   #effective number of neutrinos (only clearly defined for massless)
+c2            c_2        # coeff of second lagrangian from galileon model
+c3            c_3        # coeff of third lagrangian from galileon model
+c4            c_4        # coeff of fourth lagrangian from galileon model
+cG            c_G        # coeff of disformal coupling from galileon model
+omegal*       \Omega_\Lambda
+c5*           c_5        # coeff of fifth lagrangian from galileon model
