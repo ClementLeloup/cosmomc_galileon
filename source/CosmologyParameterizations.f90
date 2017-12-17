@@ -241,7 +241,6 @@
 
            ! step to explore the H0 interval
            step = (this%H0_max - this%H0_min)*0.1
-           print *, "step :", step
 
            ! Check if H0_max verifies all theoretical conditions
            call SetForH(Params, CMB, try_t, .true.)
@@ -254,8 +253,6 @@
               end if
            end if
 
-           print *, "theta_t :", theta_t
-
            ! Check if H0_min verifies all theoretical conditions
            call SetForH(Params, CMB, try_b, .false.)
            call CosmoCalc%SetParamsForBackground(CMB, error)
@@ -266,16 +263,10 @@
                  return
               end if
            end if           
-           
-           print *, "theta_b :", theta_b
-
 
            ! Two loops to get an interval in H0 on which to perform dichotomy
            if(theta_t==0)then
               do
-
-                 print *, "try_t", try_t
-
                  if(step<0.01)then
                     cmb%H0=0
                     if (Feedback>1) write(*,*) instance, 'This set of parameters is bad, no H0 allowed.'
@@ -310,9 +301,6 @@
 
            if(theta_b==0 .and. try_b==this%H0_min)then
               do
-
-                 print *, "try_b", try_b
-
                  if(step<0.01)then
                     cmb%H0=0
                     if (Feedback>1) write(*,*) instance, 'This set of parameters is bad, no H0 allowed.'

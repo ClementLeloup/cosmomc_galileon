@@ -145,6 +145,7 @@
     !Called after this%init
     num_hard = slow_num
     num_initpower = semi_slow_num
+
     if (num_hard + num_initpower /= num_theory_params) &
         call MpiStop('SetTheoryParameterNumbers: parameter numbers do not match')
     index_initpower = num_hard+1

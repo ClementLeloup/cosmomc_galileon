@@ -369,8 +369,8 @@ int calcHubbleGalileon(double* grhormass, double* nu_masses, int* nu_mass_eigens
     }
 
     if ( fabs((OmegaM - OmTest)/OmTest)>1e-4 ) {
-      fprintf(stderr, "Integration error : %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n", om, orad, c2, c3, c4, c5, cG, c0, OmTest, OmegaM, OmegaP, OmegaM - 1 + OmegaP + orad/(a3*intvar[i]*h2), a, fabs((OmegaM - OmTest)/OmTest));
-      // return 4;
+      // fprintf(stderr, "Integration error : %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n", om, orad, c2, c3, c4, c5, cG, c0, OmTest, OmegaM, OmegaP, OmegaM - 1 + OmegaP + orad/(a3*intvar[i]*h2), a, fabs((OmegaM - OmTest)/OmTest));
+      return 4;
     }
 
     hubble[i] = y[0];
@@ -944,107 +944,107 @@ extern "C" double pigalprime_(double* point, double* hcamb, double* xcamb, doubl
 
 }
 
-// Cross checks that independent equations are satisfied by perturbations
-extern "C" double*  crosschecks_(double* point, double* hcamb, double* xcamb, double* dhcamb, double* dxcamb, double* dgrho, double* dgq, double* dgpi, double* eta, double* dphi, double* dphiprime, double* dphiprimeprime, double* k, double* grho, double* gpres, double* deltafprime){
+// // Cross checks that independent equations are satisfied by perturbations
+// extern "C" double*  crosschecks_(double* point, double* hcamb, double* xcamb, double* dhcamb, double* dxcamb, double* dgrho, double* dgq, double* dgpi, double* eta, double* dphi, double* dphiprime, double* dphiprimeprime, double* k, double* grho, double* gpres, double* deltafprime){
 
-  // static double eq[2];
-  static double eq[7];
+//   // static double eq[2];
+//   static double eq[7];
 
-  //  Define variables to save memory
-  double a2 = (*point)*(*point);
-  double a4 = a2*a2;
-  double a6 = a4*a2;
-  double xgal2 = (*xcamb)*(*xcamb);
-  double xgal3 = xgal2*(*xcamb);
-  double xgal4 = xgal2*xgal2;
-  double xgal5 = xgal3*xgal2;
-  double h2 = (*hcamb)*(*hcamb);
-  double h3 = h2*(*hcamb);
-  double h4 = h2*h2;
-  double h5 = h3*h2;
-  double h6 = h3*h3;
-  double h7 = h4*h3;
-  double h8 = h4*h4;
+//   //  Define variables to save memory
+//   double a2 = (*point)*(*point);
+//   double a4 = a2*a2;
+//   double a6 = a4*a2;
+//   double xgal2 = (*xcamb)*(*xcamb);
+//   double xgal3 = xgal2*(*xcamb);
+//   double xgal4 = xgal2*xgal2;
+//   double xgal5 = xgal3*xgal2;
+//   double h2 = (*hcamb)*(*hcamb);
+//   double h3 = h2*(*hcamb);
+//   double h4 = h2*h2;
+//   double h5 = h3*h2;
+//   double h6 = h3*h3;
+//   double h7 = h4*h3;
+//   double h8 = h4*h4;
 
-  // Derivatives of h and x
-  double hprime = (*point)*(*dhcamb) + (*hcamb);
-  double xhprime = (*dxcamb)*(*hcamb) + (*xcamb)*hprime; // Derivative of the product (xgal*H)'
+//   // Derivatives of h and x
+//   double hprime = (*point)*(*dhcamb) + (*hcamb);
+//   double xhprime = (*dxcamb)*(*hcamb) + (*xcamb)*hprime; // Derivative of the product (xgal*H)'
 
-  // // Derivatives of density perturbations of other fluids
-  double dotdeltaf = (*deltafprime);
+//   // // Derivatives of density perturbations of other fluids
+//   double dotdeltaf = (*deltafprime);
 
-  // Expression of Z' and ChiP to be used in the conservation equations
-  double chiprimehat = c2*(-2*pow(h0, 2)*(*xcamb)*h2*(*dphiprime) + pow(h0, 2)*(*xcamb)*(*hcamb)*hprime*(*dphiprime) + pow(h0, 2)*h2*(*dxcamb)*(*dphiprime))
-    - c3/a2*(-72*pow(h0, 2)*xgal2*h4*(*dphiprime) + 54*pow(h0, 2)*xgal2*h3*hprime*(*dphiprime) + 36*pow(h0, 2)*(*xcamb)*h4*(*dxcamb)*(*dphiprime)
-	     + pow(*k, 2)*(2*xgal2*h2*(*dphiprime) - 8*h0*xgal2*h3*(*dphi) + 4*h0*xgal2*h2*hprime*(*dphi) + 4*h0*(*xcamb)*h3*(*dxcamb)*(*dphi)))
-    + c4/a4*(-540*pow(h0, 2)*xgal3*h6*(*dphiprime) + 450*pow(h0, 2)*xgal3*h5*hprime*(*dphiprime) + 270*pow(h0, 2)*xgal2*h6*(*dxcamb)*(*dphiprime)
-	     + pow(*k, 2)*(12*xgal3*h4*(*dphiprime) - 72*h0*xgal3*h5*(*dphi) + 48*h0*xgal3*h4*hprime*(*dphi) + 36*h0*xgal2*h5*(*dxcamb)*(*dphi)))
-    - c5/a6*(-840*pow(h0, 2)*xgal4*h8*(*dphiprime) + 735*pow(h0, 2)*xgal4*h7*hprime*(*dphiprime) + 420*pow(h0, 2)*xgal3*h8*(*dxcamb)*(*dphiprime)
-	     + pow(*k, 2)*(15*xgal4*h6*(*dphiprime) - 120*h0*xgal4*h7*(*dphi) + 90*h0*xgal4*h6*hprime*(*dphi) + 60*h0*xgal3*h7*(*dxcamb)*(*dphi)))
-    - cG/a2*(-72*pow(h0, 2)*(*xcamb)*h4*(*dphiprime) + 54*pow(h0, 2)*(*xcamb)*h3*hprime*(*dphiprime) + 18*pow(h0, 2)*h4*(*dxcamb)*(*dphiprime)
-	     + pow(*k, 2)*(4*(*xcamb)*h2*(*dphiprime) - 16*h0*(*xcamb)*h3*(*dphi) + 8*h0*(*xcamb)*h2*hprime*(*dphi) + 4*h0*h3*(*dxcamb)*(*dphi)));
-  double beta_gammasecond = c2*h0*(*xcamb)*(*hcamb) - 18*c3*h0/a2*xgal2*h3 + 90*c4*h0/a4*xgal3*h5 - 105*c5*h0/a6*xgal4*h7 - 18*cG*h0/a2*(*xcamb)*h3;
+//   // Expression of Z' and ChiP to be used in the conservation equations
+//   double chiprimehat = c2*(-2*pow(h0, 2)*(*xcamb)*h2*(*dphiprime) + pow(h0, 2)*(*xcamb)*(*hcamb)*hprime*(*dphiprime) + pow(h0, 2)*h2*(*dxcamb)*(*dphiprime))
+//     - c3/a2*(-72*pow(h0, 2)*xgal2*h4*(*dphiprime) + 54*pow(h0, 2)*xgal2*h3*hprime*(*dphiprime) + 36*pow(h0, 2)*(*xcamb)*h4*(*dxcamb)*(*dphiprime)
+// 	     + pow(*k, 2)*(2*xgal2*h2*(*dphiprime) - 8*h0*xgal2*h3*(*dphi) + 4*h0*xgal2*h2*hprime*(*dphi) + 4*h0*(*xcamb)*h3*(*dxcamb)*(*dphi)))
+//     + c4/a4*(-540*pow(h0, 2)*xgal3*h6*(*dphiprime) + 450*pow(h0, 2)*xgal3*h5*hprime*(*dphiprime) + 270*pow(h0, 2)*xgal2*h6*(*dxcamb)*(*dphiprime)
+// 	     + pow(*k, 2)*(12*xgal3*h4*(*dphiprime) - 72*h0*xgal3*h5*(*dphi) + 48*h0*xgal3*h4*hprime*(*dphi) + 36*h0*xgal2*h5*(*dxcamb)*(*dphi)))
+//     - c5/a6*(-840*pow(h0, 2)*xgal4*h8*(*dphiprime) + 735*pow(h0, 2)*xgal4*h7*hprime*(*dphiprime) + 420*pow(h0, 2)*xgal3*h8*(*dxcamb)*(*dphiprime)
+// 	     + pow(*k, 2)*(15*xgal4*h6*(*dphiprime) - 120*h0*xgal4*h7*(*dphi) + 90*h0*xgal4*h6*hprime*(*dphi) + 60*h0*xgal3*h7*(*dxcamb)*(*dphi)))
+//     - cG/a2*(-72*pow(h0, 2)*(*xcamb)*h4*(*dphiprime) + 54*pow(h0, 2)*(*xcamb)*h3*hprime*(*dphiprime) + 18*pow(h0, 2)*h4*(*dxcamb)*(*dphiprime)
+// 	     + pow(*k, 2)*(4*(*xcamb)*h2*(*dphiprime) - 16*h0*(*xcamb)*h3*(*dphi) + 8*h0*(*xcamb)*h2*hprime*(*dphi) + 4*h0*h3*(*dxcamb)*(*dphi)));
+//   double beta_gammasecond = c2*h0*(*xcamb)*(*hcamb) - 18*c3*h0/a2*xgal2*h3 + 90*c4*h0/a4*xgal3*h5 - 105*c5*h0/a6*xgal4*h7 - 18*cG*h0/a2*(*xcamb)*h3;
 
-  double beta_Z = -2*c3/a2*xgal3*h2
-    + 15*c4/a4*xgal4*h4
-    - 21*c5/a6*xgal5*h6
-    - 6*cG/a2*xgal2*h2;
-  double beta_eta = 1.5*c4/a4*xgal4*h4
-    - 3*c5/a6*xgal5*h6
-    - cG/a2*xgal2*h2;
-  double beta_Z_prime = -c3*h0/a2*(-4*xgal3*h3 + 4*xgal3*h2*hprime + 6*xgal2*h3*(*dxcamb))
-    + c4*h0/a4*(-60*xgal4*h5 + 60*xgal4*h4*hprime + 60*xgal3*h5*(*dxcamb))
-    - c5*h0/a6*(-126*xgal5*h7 + 126*xgal5*h6*hprime + 105*xgal4*h7*(*dxcamb))
-    - cG*h0/a2*(-12*xgal2*h3 + 12*xgal2*h2*hprime + 12*(*xcamb)*h3*(*dxcamb));
-  double beta_eta_prime = c4*h0/a4*(-6*xgal4*h5 + 6*xgal4*h4*hprime + 6*xgal3*h5*(*dxcamb))
-    - c5*h0/a6*(-18*xgal5*h7 + 18*xgal5*h6*hprime + 15*xgal4*h7*(*dxcamb))
-    - cG*h0/a2*(-2*xgal2*h3 + 2*xgal2*h2*hprime + 2*(*xcamb)*h3*(*dxcamb));
+//   double beta_Z = -2*c3/a2*xgal3*h2
+//     + 15*c4/a4*xgal4*h4
+//     - 21*c5/a6*xgal5*h6
+//     - 6*cG/a2*xgal2*h2;
+//   double beta_eta = 1.5*c4/a4*xgal4*h4
+//     - 3*c5/a6*xgal5*h6
+//     - cG/a2*xgal2*h2;
+//   double beta_Z_prime = -c3*h0/a2*(-4*xgal3*h3 + 4*xgal3*h2*hprime + 6*xgal2*h3*(*dxcamb))
+//     + c4*h0/a4*(-60*xgal4*h5 + 60*xgal4*h4*hprime + 60*xgal3*h5*(*dxcamb))
+//     - c5*h0/a6*(-126*xgal5*h7 + 126*xgal5*h6*hprime + 105*xgal4*h7*(*dxcamb))
+//     - cG*h0/a2*(-12*xgal2*h3 + 12*xgal2*h2*hprime + 12*(*xcamb)*h3*(*dxcamb));
+//   double beta_eta_prime = c4*h0/a4*(-6*xgal4*h5 + 6*xgal4*h4*hprime + 6*xgal3*h5*(*dxcamb))
+//     - c5*h0/a6*(-18*xgal5*h7 + 18*xgal5*h6*hprime + 15*xgal4*h7*(*dxcamb))
+//     - cG*h0/a2*(-2*xgal2*h3 + 2*xgal2*h2*hprime + 2*(*xcamb)*h3*(*dxcamb));
 
-  // kHZ'
-  double khzprime = ((h0*(*hcamb) - 0.5*(h0*hprime + beta_Z*h0*(*hcamb)) + 0.25*(beta_Z_prime + beta_Z*h0*hprime))*(*dgrho) + 0.5*(1-beta_eta)*(*k)*(*dgq) - (h0*hprime + beta_Z*h0*(*hcamb) + beta_eta_prime - 2*beta_eta*h0*(*hcamb) - 0.5*(beta_Z_prime + beta_Z*h0*hprime))*(*k)*(*eta) + 0.5*dotdeltaf + 0.5*chiprimehat + 0.5*beta_gammasecond*(*dphiprimeprime))/(1-0.5*beta_Z); //Barreira
+//   // kHZ'
+//   double khzprime = ((h0*(*hcamb) - 0.5*(h0*hprime + beta_Z*h0*(*hcamb)) + 0.25*(beta_Z_prime + beta_Z*h0*hprime))*(*dgrho) + 0.5*(1-beta_eta)*(*k)*(*dgq) - (h0*hprime + beta_Z*h0*(*hcamb) + beta_eta_prime - 2*beta_eta*h0*(*hcamb) - 0.5*(beta_Z_prime + beta_Z*h0*hprime))*(*k)*(*eta) + 0.5*dotdeltaf + 0.5*chiprimehat + 0.5*beta_gammasecond*(*dphiprimeprime))/(1-0.5*beta_Z); //Barreira
 
-  // Derivative of ChiG
-  // double dotdeltagal = chiprimehat + beta_gammasecond*(*dphiprimeprime) + 0.5*(beta_Z_prime + beta_Z*h0*hprime - 2*beta_Z*h0*(*hcamb))*(*dgrho) + beta_Z*khzprime + (beta_Z_prime + beta_Z*h0*hprime - 2*beta_Z*h0*(*hcamb) - 2*beta_eta_prime + 4*beta_eta*h0*(*hcamb))*(*k)*(*eta) - beta_eta*(*k)*(*dgq);
+//   // Derivative of ChiG
+//   // double dotdeltagal = chiprimehat + beta_gammasecond*(*dphiprimeprime) + 0.5*(beta_Z_prime + beta_Z*h0*hprime - 2*beta_Z*h0*(*hcamb))*(*dgrho) + beta_Z*khzprime + (beta_Z_prime + beta_Z*h0*hprime - 2*beta_Z*h0*(*hcamb) - 2*beta_eta_prime + 4*beta_eta*h0*(*hcamb))*(*k)*(*eta) - beta_eta*(*k)*(*dgq);
 
-  // Derivative of q and Chi
-  double dotdeltaq = -2./3.*((*k)*khzprime/(h0*(*hcamb)) + pow(*k, 2)*(*eta) + (*k)*((*dgpi) + (*dgrho)) + 6*h0*(*hcamb)*(*dgq));
-  // double dotdelta = dotdeltaf + dotdeltagal;
-  double dotdelta = 2*khzprime + (h0*hprime - 2*h0*(*hcamb))*(*dgrho) + 2*h0*hprime*(*k)*(*eta) - (*k)*(*dgq);
+//   // Derivative of q and Chi
+//   double dotdeltaq = -2./3.*((*k)*khzprime/(h0*(*hcamb)) + pow(*k, 2)*(*eta) + (*k)*((*dgpi) + (*dgrho)) + 6*h0*(*hcamb)*(*dgq));
+//   // double dotdelta = dotdeltaf + dotdeltagal;
+//   double dotdelta = 2*khzprime + (h0*hprime - 2*h0*(*hcamb))*(*dgrho) + 2*h0*hprime*(*k)*(*eta) - (*k)*(*dgq);
 
-  // Equation (49) of arXiv:1208.0600
-  // std::vector<double> eq49;
-  // eq49.push_back(dotdelta);
-  // eq49.push_back(((*grho)+(*gpres))/(h0*(*hcamb))*(0.5*(*dgrho) + (*k)*(*eta)));
-  // eq49.push_back(h0*(*hcamb)*((*dgrho) - 2*(*k)*(*eta)) - 2*khzprime);
-  // eq49.push_back((*k)*(*dgq));
-  // double max0 = maxVec(eq49);
-  // eq[0] = (dotdelta + ((*grho)+(*gpres))/(h0*(*hcamb))*(0.5*(*dgrho) + (*k)*(*eta)) + (h0*(*hcamb)*((*dgrho) - 2*(*k)*(*eta)) - 2*khzprime) + (*k)*(*dgq))/max0;
-  eq[0] = (dotdelta + ((*grho)+(*gpres))/(h0*(*hcamb))*(0.5*(*dgrho) + (*k)*(*eta)) + (h0*(*hcamb)*((*dgrho) - 2*(*k)*(*eta)) - 2*khzprime) + (*k)*(*dgq))/dotdelta;
-  eq[1] = (dotdelta + ((*grho)+(*gpres))/(h0*(*hcamb))*(0.5*(*dgrho) + (*k)*(*eta)) + (h0*(*hcamb)*((*dgrho) - 2*(*k)*(*eta)) - 2*khzprime) + (*k)*(*dgq))/((*grho)+(*gpres))/(h0*(*hcamb))*(0.5*(*dgrho) + (*k)*(*eta));
-  eq[2] = (dotdelta + ((*grho)+(*gpres))/(h0*(*hcamb))*(0.5*(*dgrho) + (*k)*(*eta)) + (h0*(*hcamb)*((*dgrho) - 2*(*k)*(*eta)) - 2*khzprime) + (*k)*(*dgq))/((h0*(*hcamb)*((*dgrho) - 2*(*k)*(*eta)) - 2*khzprime) + (*k)*(*dgq));
+//   // Equation (49) of arXiv:1208.0600
+//   // std::vector<double> eq49;
+//   // eq49.push_back(dotdelta);
+//   // eq49.push_back(((*grho)+(*gpres))/(h0*(*hcamb))*(0.5*(*dgrho) + (*k)*(*eta)));
+//   // eq49.push_back(h0*(*hcamb)*((*dgrho) - 2*(*k)*(*eta)) - 2*khzprime);
+//   // eq49.push_back((*k)*(*dgq));
+//   // double max0 = maxVec(eq49);
+//   // eq[0] = (dotdelta + ((*grho)+(*gpres))/(h0*(*hcamb))*(0.5*(*dgrho) + (*k)*(*eta)) + (h0*(*hcamb)*((*dgrho) - 2*(*k)*(*eta)) - 2*khzprime) + (*k)*(*dgq))/max0;
+//   eq[0] = (dotdelta + ((*grho)+(*gpres))/(h0*(*hcamb))*(0.5*(*dgrho) + (*k)*(*eta)) + (h0*(*hcamb)*((*dgrho) - 2*(*k)*(*eta)) - 2*khzprime) + (*k)*(*dgq))/dotdelta;
+//   eq[1] = (dotdelta + ((*grho)+(*gpres))/(h0*(*hcamb))*(0.5*(*dgrho) + (*k)*(*eta)) + (h0*(*hcamb)*((*dgrho) - 2*(*k)*(*eta)) - 2*khzprime) + (*k)*(*dgq))/((*grho)+(*gpres))/(h0*(*hcamb))*(0.5*(*dgrho) + (*k)*(*eta));
+//   eq[2] = (dotdelta + ((*grho)+(*gpres))/(h0*(*hcamb))*(0.5*(*dgrho) + (*k)*(*eta)) + (h0*(*hcamb)*((*dgrho) - 2*(*k)*(*eta)) - 2*khzprime) + (*k)*(*dgq))/((h0*(*hcamb)*((*dgrho) - 2*(*k)*(*eta)) - 2*khzprime) + (*k)*(*dgq));
 
-  // Equation (50) of arXiv:1208.0600  
-  // std::vector<double> eq50;
-  // eq50.push_back(dotdeltaq);
-  // eq50.push_back(4*h0*(*hcamb)*(*dgq));
-  // eq50.push_back(2./3.*(*k)*(khzprime/(h0*(*hcamb)) + (*k)*(*eta) + (*dgrho)));
-  // eq50.push_back(2./3.*(*k)*(*dgpi));
-  // double max1 = maxVec(eq50);
-  // eq[1] = (dotdeltaq + 4*h0*(*hcamb)*(*dgq) + 2./3.*(*k)*(khzprime/(h0*(*hcamb)) + (*k)*(*eta) + (*dgrho)) + 2./3.*(*k)*(*dgpi))/max1;
-  eq[3] = (dotdeltaq + 4*h0*(*hcamb)*(*dgq) + 2./3.*(*k)*(khzprime/(h0*(*hcamb)) + (*k)*(*eta) + (*dgrho)) + 2./3.*(*k)*(*dgpi))/dotdeltaq;
-  eq[4] = (dotdeltaq + 4*h0*(*hcamb)*(*dgq) + 2./3.*(*k)*(khzprime/(h0*(*hcamb)) + (*k)*(*eta) + (*dgrho)) + 2./3.*(*k)*(*dgpi))/(4*h0*(*hcamb)*(*dgq));
-  eq[5] = (dotdeltaq + 4*h0*(*hcamb)*(*dgq) + 2./3.*(*k)*(khzprime/(h0*(*hcamb)) + (*k)*(*eta) + (*dgrho)) + 2./3.*(*k)*(*dgpi))/(2./3.*(*k)*(khzprime/(h0*(*hcamb)) + (*k)*(*eta) + (*dgrho)));
-  eq[6] = (dotdeltaq + 4*h0*(*hcamb)*(*dgq) + 2./3.*(*k)*(khzprime/(h0*(*hcamb)) + (*k)*(*eta) + (*dgrho)) + 2./3.*(*k)*(*dgpi))/(2./3.*(*k)*(*dgpi));
+//   // Equation (50) of arXiv:1208.0600  
+//   // std::vector<double> eq50;
+//   // eq50.push_back(dotdeltaq);
+//   // eq50.push_back(4*h0*(*hcamb)*(*dgq));
+//   // eq50.push_back(2./3.*(*k)*(khzprime/(h0*(*hcamb)) + (*k)*(*eta) + (*dgrho)));
+//   // eq50.push_back(2./3.*(*k)*(*dgpi));
+//   // double max1 = maxVec(eq50);
+//   // eq[1] = (dotdeltaq + 4*h0*(*hcamb)*(*dgq) + 2./3.*(*k)*(khzprime/(h0*(*hcamb)) + (*k)*(*eta) + (*dgrho)) + 2./3.*(*k)*(*dgpi))/max1;
+//   eq[3] = (dotdeltaq + 4*h0*(*hcamb)*(*dgq) + 2./3.*(*k)*(khzprime/(h0*(*hcamb)) + (*k)*(*eta) + (*dgrho)) + 2./3.*(*k)*(*dgpi))/dotdeltaq;
+//   eq[4] = (dotdeltaq + 4*h0*(*hcamb)*(*dgq) + 2./3.*(*k)*(khzprime/(h0*(*hcamb)) + (*k)*(*eta) + (*dgrho)) + 2./3.*(*k)*(*dgpi))/(4*h0*(*hcamb)*(*dgq));
+//   eq[5] = (dotdeltaq + 4*h0*(*hcamb)*(*dgq) + 2./3.*(*k)*(khzprime/(h0*(*hcamb)) + (*k)*(*eta) + (*dgrho)) + 2./3.*(*k)*(*dgpi))/(2./3.*(*k)*(khzprime/(h0*(*hcamb)) + (*k)*(*eta) + (*dgrho)));
+//   eq[6] = (dotdeltaq + 4*h0*(*hcamb)*(*dgq) + 2./3.*(*k)*(khzprime/(h0*(*hcamb)) + (*k)*(*eta) + (*dgrho)) + 2./3.*(*k)*(*dgpi))/(2./3.*(*k)*(*dgpi));
 
 
-  // FILE* g = fopen("crosschecks/crosschecks_galileon1_eq49ratios_q1.dat", "a");
-  // // fprintf(g, "%.16f \t %.16f \t %.16f\n", (*point), eq[0], eq[1]);
-  // fprintf(g, "%.16f \t %.16f \t %.16f \t %.16f \t %.16f\n", (*point), dotdelta, ((*grho)+(*gpres))/(h0*(*hcamb))*(0.5*(*dgrho) + (*k)*(*eta)), (h0*(*hcamb)*((*dgrho) - 2*(*k)*(*eta)) - 2*khzprime) + (*k)*(*dgq), eq[0]);
-  // fclose(g);
+//   // FILE* g = fopen("crosschecks/crosschecks_galileon1_eq49ratios_q1.dat", "a");
+//   // // fprintf(g, "%.16f \t %.16f \t %.16f\n", (*point), eq[0], eq[1]);
+//   // fprintf(g, "%.16f \t %.16f \t %.16f \t %.16f \t %.16f\n", (*point), dotdelta, ((*grho)+(*gpres))/(h0*(*hcamb))*(0.5*(*dgrho) + (*k)*(*eta)), (h0*(*hcamb)*((*dgrho) - 2*(*k)*(*eta)) - 2*khzprime) + (*k)*(*dgq), eq[0]);
+//   // fclose(g);
 
-  return eq;
+//   return eq;
 
-}
+// }
 
 extern "C" void freegal_(){
 
@@ -1116,26 +1116,26 @@ int test(){
 
   arrays_(&orad, &om, &h0, &c2, &c3, &c4, &cG, grhormass, nu_masses, &nu_mass_eigenstates);
 
-  double* hx1 = handxofa_(&a1);
-  const double y1[] = {(*hx1), *(hx1+1), 0};
+  // double* hx1 = handxofa_(&a1);
+  // const double y1[] = {(*hx1), *(hx1+1), 0};
 
-  double* hx2 = handxofa_(&a2);
-  const double y2[] = {(*hx2), *(hx2+1), 0};
+  // double* hx2 = handxofa_(&a2);
+  // const double y2[] = {(*hx2), *(hx2+1), 0};
 
-  double* hx3 = handxofa_(&a3);
-  const double y3[] = {(*hx3), *(hx3+1), 0};
+  // double* hx3 = handxofa_(&a3);
+  // const double y3[] = {(*hx3), *(hx3+1), 0};
 
-  double* hx4 = handxofa_(&a4);
-  const double y4[] = {(*hx4), *(hx4+1), 0};
+  // double* hx4 = handxofa_(&a4);
+  // const double y4[] = {(*hx4), *(hx4+1), 0};
 
-  double* hx5 = handxofa_(&a5);
-  const double y5[] = {(*hx5), *(hx5+1), 0};
+  // double* hx5 = handxofa_(&a5);
+  // const double y5[] = {(*hx5), *(hx5+1), 0};
 
-  calcPertOmC2C3C4C5CGC0(a1, y1);
-  calcPertOmC2C3C4C5CGC0(a2, y2);
-  calcPertOmC2C3C4C5CGC0(a3, y3);
-  calcPertOmC2C3C4C5CGC0(a4, y4);
-  calcPertOmC2C3C4C5CGC0(a5, y5);
+  // calcPertOmC2C3C4C5CGC0(a1, y1);
+  // calcPertOmC2C3C4C5CGC0(a2, y2);
+  // calcPertOmC2C3C4C5CGC0(a3, y3);
+  // calcPertOmC2C3C4C5CGC0(a4, y4);
+  // calcPertOmC2C3C4C5CGC0(a5, y5);
 
   freegal_();
 

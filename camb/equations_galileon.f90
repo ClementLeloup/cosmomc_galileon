@@ -79,6 +79,7 @@
 
       CHARACTER(len=Ini_max_string_len) :: InputFile, outroot
       real(dl) :: grhorad, rhonu, omegar, omegam, hub
+      integer status
 
       !Set the input file to look into for parameters
       InputFile = ''
@@ -1276,8 +1277,8 @@
     real(dl) dphi, dphiprime, dphiprimeprime, dtauda
     real(dl) clxcdot, clxbdot, clxgdot, clxrdot, dotdeltaf
     real(dl) dh, dx
-    type(C_PTR) :: cptr_to_cc
-    real(kind=C_DOUBLE), pointer :: cc(:)
+!    type(C_PTR) :: cptr_to_cc
+!    real(kind=C_DOUBLE), pointer :: cc(:)
     integer cross_i
 
 

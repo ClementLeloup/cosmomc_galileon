@@ -204,11 +204,6 @@
         end do
         !$OMP END PARAllEl DO
 
-        !Modified by Clement Leloup
-        if(CP%use_galileon) then
-           call freegal
-        end if
-
         if (DebugMsgs .and. Feedbacklevel > 0) then
             timeprev=actual
             actual=GetTestTime()
@@ -278,6 +273,11 @@
         end if
 
         call FreeSourceMem
+
+        !Modified by Clement Leloup
+        if(CP%use_galileon) then
+           call freegal
+        end if
 
         !Final calculations for CMB output unless want the Cl transfer functions only.
 
