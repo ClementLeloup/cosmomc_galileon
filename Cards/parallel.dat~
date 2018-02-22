@@ -1,0 +1,11 @@
+Type=Parallel
+Project=snovae
+CPU_time=05:00:00
+Elapse_time=12:00:00
+Mem_size=3G
+Alloc_mem=30G
+Job_name=jla_pa_4x2
+Output_path=outputs/
+Num_core=8
+Queue_name=pa_medium
+Cosmomc_input=results/ini_files/parallel_JLA.ini

@@ -1,0 +1,12 @@
+Type=Basic
+Project=snovae
+CPU_time=48:00:00
+Elapse_time=58:00:00
+Mem_size=4G
+Alloc_mem=16G
+Job_name=gal_GW2
+Output_path=outputs/
+Num_core=
+MPI_env=
+Queue_name=long@@C6320
+Cosmomc_input=results/ini_files/galileon/GW/GW_2.ini

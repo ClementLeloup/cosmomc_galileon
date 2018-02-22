@@ -1,0 +1,4 @@
+name = GW170817
+
+gw_measurements_file = gw.txt
+gw_measurements_file_has_error = T

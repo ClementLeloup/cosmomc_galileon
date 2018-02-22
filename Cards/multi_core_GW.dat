@@ -1,0 +1,12 @@
+Type=Multi-core
+Project=snovae
+CPU_time=180:00:00
+Elapse_time=200:00:00
+Mem_size=3G
+Alloc_mem=16G
+Job_name=gal_GW1
+Output_path=outputs/
+Num_core=4
+MPI_env=openmpi
+Queue_name=mc_longlasting@@C6320mc
+Cosmomc_input=results/ini_files/galileon/GW/GW_1.ini

@@ -1,0 +1,12 @@
+Type=Parallel
+Project=snovae
+CPU_time=48:00:00
+Elapse_time=48:00:00
+Mem_size=3G
+Alloc_mem=16G
+Job_name=galileon_test5
+Output_path=outputs/
+Num_core=16
+MPI_env=openmpi_16
+Queue_name=mc_long
+Cosmomc_input=results/ini_files/galileon/CMB_only.ini
