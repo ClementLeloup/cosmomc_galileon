@@ -18,6 +18,10 @@
         Type(TCosmologyImportanceOptions) :: ImportanceOptions
     contains
     procedure :: BAO_D_v
+
+    !Modified by Clement Leloup
+    procedure :: GW_light_dt
+
     procedure :: Hofz
     procedure :: Hofz_Hunit
     procedure :: AngularDiameterDistance
@@ -171,13 +175,14 @@
 
     !Modified by Clement Leloup
     !real(mcp) function CMBToTheta(this, CMB)
-    real(mcp) function CMBToTheta(this, CMB, error)
+    real(mcp) function CMBToTheta(this, CMB, error, H)
 
     class(TCosmologyCalculator) :: this
     class(CMBParams) CMB
 
     !Modified by Clement Leloup
     integer error
+    real(mcp), optional ::  H
 
     call this%ErrorNotImplemented('CMBToTheta')
     CMBToTheta=0
@@ -192,6 +197,16 @@
     BAO_D_v = 0
 
     end function BAO_D_v
+
+    !Modified by Clement Leloup
+    real(mcp) function GW_light_dt(this, z)
+    class(TCosmologyCalculator) :: this
+    real(mcp), intent(IN) :: z
+
+    call this%ErrorNotImplemented('GW_light_dt')
+    GW_light_dt = 0
+
+    end function GW_light_dt
 
     real(mcp) function AngularDiameterDistance(this, z)
     class(TCosmologyCalculator) :: this
