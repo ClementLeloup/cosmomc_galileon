@@ -257,12 +257,12 @@
     contains
 
 
-    subroutine CAMBParams_Set(P, error, DoReion)
+    subroutine CAMBParams_Set(P, error, DoReion, bkg)
     use constants
     type(CAMBparams), intent(in) :: P
     real(dl) GetOmegak, fractional_number, conv
     integer, optional :: error !Zero if OK
-    logical, optional :: DoReion
+    logical, optional :: DoReion, bkg
     logical WantReion
     integer nu_i,actual_massless
     real(dl) nu_massless_degeneracy, neff_i
@@ -392,8 +392,17 @@
     fHe = CP%YHe/(mass_ratio_He_H*(1.d0-CP%YHe))  !n_He_tot / n_H_tot
 
     if (.not.call_again) then 
+
        call init_massive_nu(CP%omegan /=0)
-       call init_background
+
+       !Modified by Clement Leloup
+       if(present(bkg))then
+          if(bkg)then
+             call init_background
+          end if
+       else
+          call init_background
+       end if
 
        !Modified by Clement Leloup
        if (global_error_flag/=0) then
@@ -401,12 +410,24 @@
           return
        end if
 
-       if (global_error_flag==0) then
-          CP%tau0=TimeOfz(0._dl)
-          ! print *, 'chi = ',  (CP%tau0 - TimeOfz(0.15_dl)) * CP%h0/100
-          last_tau0=CP%tau0
-          if (WantReion) call Reionization_Init(CP%Reion,CP%ReionHist, CP%YHe, akthom, CP%tau0, FeedbackLevel)
-       end if
+          !Modified by Clement Leloup
+          if(present(bkg))then
+             if(bkg)then
+                if (global_error_flag==0) then
+                   CP%tau0=TimeOfz(0._dl)
+                   ! print *, 'chi = ',  (CP%tau0 - TimeOfz(0.15_dl)) * CP%h0/100
+                   last_tau0=CP%tau0
+                   if(WantReion) call Reionization_Init(CP%Reion,CP%ReionHist, CP%YHe, akthom, CP%tau0, FeedbackLevel)
+                end if
+             end if
+          else
+             if (global_error_flag==0) then
+                CP%tau0=TimeOfz(0._dl)
+                ! print *, 'chi = ',  (CP%tau0 - TimeOfz(0.15_dl)) * CP%h0/100
+                last_tau0=CP%tau0
+             end if
+             if(WantReion) call Reionization_Init(CP%Reion,CP%ReionHist, CP%YHe, akthom, CP%tau0, FeedbackLevel)
+          end if
     else
         CP%tau0=last_tau0
     end if
@@ -665,6 +686,35 @@
 
     end function BAO_D_v
 
+    !Modified by Clement Leloup
+    real(dl) function dt_gw_phot(a)
+      implicit none
+      real(dl), intent(IN) :: a
+      real(dl) dtauda, ct
+      external ct, dtauda
+
+      if(CP%use_galileon)then
+         dt_gw_phot = (1-1/ct(a))*dtda(a)
+      else
+         dt_gw_phot = 0
+      end if
+      
+    end function dt_gw_phot
+
+    !Modified by Clement Leloup
+    real(dl) function GW_light_dt(ze)
+      use constants
+      real(dl), intent(IN) :: ze
+      real(dl) ae, atol, rombint
+      external rombint
+      
+      ae = 1/(1+ze)
+      atol = 1d-8
+      
+      GW_light_dt = rombint(dt_gw_phot,ae, 1._dl ,atol)*Mpc/c
+      
+    end function GW_light_dt
+
     function dsound_da_exact(a)
     implicit none
     real(dl) dsound_da_exact,dtauda,a,R,cs
@@ -700,8 +750,8 @@
     real(dl) zstar, astar, atol, rs, DA
     real(dl) CosmomcTheta
     real(dl) ombh2, omdmh2
-    real(dl) rombint
-    external rombint
+    real(dl) rombint, dtauda
+    external rombint, dtauda
 
     ombh2 = CP%omegab*(CP%h0/100.0d0)**2
     omdmh2 = (CP%omegac+CP%omegan)*(CP%h0/100.0d0)**2
@@ -712,7 +762,9 @@
         (omdmh2+ombh2)**(0.560/(1+21.1*ombh2**1.81)))
 
     astar = 1/(1+zstar)
+
     atol = 1e-6
+
     rs = rombint(dsound_da,1d-8,astar,atol)
     DA = AngularDiameterDistance(zstar)/astar
     CosmomcTheta = rs/DA
@@ -720,6 +772,42 @@
 
     end function CosmomcTheta
 
+    !Modified by Clement Leloup
+    function CosmomcThetaGalileon(ombh2, omdmh2, omch2, h0, error)
+      use constants
+      use iso_c_binding
+      use interface_cosmomc
+      implicit none
+      real(dl) CosmomcThetaGalileon
+      real(dl) ombh2, omdmh2, omch2, omnh2
+      real(dl) h0, grhorad, omegar, omegam, zstar, astar
+      integer global_flag_error, error, i
+      real(dl) rombint
+      external rombint
+      
+      global_flag_error = 0
+      
+      !!From Hu & Sugiyama
+      zstar =  1048*(1+0.00124*ombh2**(-0.738))*(1+ &
+           (0.0783*ombh2**(-0.238)/(1+39.5*ombh2**0.763)) * &
+           (omdmh2+ombh2)**(0.560/(1+21.1*ombh2**1.81)))
+      astar = 1/(1+zstar)
+
+      grhorad = grhog+grhornomass
+      omegar = grhorad/grhom
+      omegam = CP%omegab + CP%omegac
+
+      print *, "omegabh2 :", CP%omegab*CP%h0**2/10000, "omegach2 :", CP%omegac*CP%h0**2/10000, "h0 :", CP%h0
+      
+      CosmomcThetaGalileon = theta(omegam, omegar, ombh2, CP%h0, astar, CP%c2, CP%c3, CP%c4, CP%cG, C_LOC(grhormass(1)), C_LOC(nu_masses(1)), CP%nu_mass_eigenstates)
+      
+      if(CosmomcThetaGalileon < 0)then
+         call GlobalError("Didn't compute background successfully", error_background_evolution)
+         error = global_flag_error
+      end if
+      
+    end function CosmomcThetaGalileon
+    
     end module ModelParams
 
 

@@ -48,6 +48,10 @@
     procedure :: ReadParams => CAMBCalc_ReadParams
     procedure :: InitForLikelihoods => CAMBCalc_InitForLikelihoods
     procedure :: BAO_D_v => CAMBCalc_BAO_D_v
+
+    !Modified by Clement Leloup
+    procedure :: GW_light_dt => CAMBCalc_GW_light_dt
+
     procedure :: AngularDiameterDistance => CAMBCalc_AngularDiameterDistance
     procedure :: ComovingRadialDistance => CAMBCalc_ComovingRadialDistance
     procedure :: AngularDiameterDistance2 => CAMBCalc_AngularDiameterDistance2
@@ -73,7 +77,10 @@
     public CAMB_Calculator
     contains
 
-    subroutine CAMBCalc_CMBToCAMB(this,CMB,P)
+    !Modified by Clement Leloup
+    !subroutine CAMBCalc_CMBToCAMB(this,CMB,P)
+    subroutine CAMBCalc_CMBToCAMB(this,CMB,P, H)
+
     use LambdaGeneral
     use camb, only: CAMB_SetNeutrinoHierarchy
     use CAMBmain, only : ALens
@@ -87,14 +94,27 @@
     real(dl), external :: Newton_raphson
 
     !Modified by Clement Leloup
-    !real(dl) c2, c3, c4, c5, cG
+    real(dl), optional :: H
+    real(dl) h2
 
     P = this%CAMBP
-    P%omegab = CMB%omb
-    P%omegan = CMB%omnu
-    P%omegac = CMB%omc
-    P%omegav = CMB%omv
-    P%H0 = CMB%H0
+
+    !Modified by Clement Leloup
+    if(present(H))then
+       P%H0 = H
+       h2 = (H/100)**2
+       P%omegab = CMB%ombh2/h2
+       P%omegan = CMB%omnuh2/h2
+       P%omegac = CMB%omch2/h2
+       P%omegav = 1 - CMB%omk - P%omegab - P%omegac - P%omegan
+    else
+       P%H0 = CMB%H0
+       P%omegab = CMB%omb
+       P%omegan = CMB%omnu
+       P%omegac = CMB%omc
+       P%omegav = CMB%omv
+    end if
+
     P%Reion%redshift= CMB%zre
     P%Reion%delta_redshift = CMB%zre_delta
     w_lam = CMB%w
@@ -105,7 +125,6 @@
     P%c2 = CMB%c2
     P%c3 = CMB%c3
     P%c4 = CMB%c4
-!!$    P%c5 = CMB%c5
     P%cG = CMB%cG
 
     ALens = CMB%ALens
@@ -165,7 +184,6 @@
     !set background parameters, but don't calculate thermal history
     call this%CMBToCAMB(CMB, P)
 
-    !Modified by Clement Leloup
     call CAMBParams_Set(P, error)
 
     end subroutine CAMBCalc_SetParamsForBackground
@@ -595,10 +613,18 @@
 
     end subroutine CAMBCalc_GetNLandRatios
 
-    subroutine CAMBCalc_InitCAMB(this,CMB,error, DoReion)
+    !Modified by Clement Leloup
+    !subroutine CAMBCalc_InitCAMB(this,CMB,error, DoReion)
+    subroutine CAMBCalc_InitCAMB(this,CMB,error, DoReion, H, doBkg)
+
     class(CAMB_Calculator) :: this
     class(CMBParams), intent(in) :: CMB
     logical, optional, intent(in) :: DoReion
+
+    !Modified by Clement Leloup
+    real(mcp), optional :: H
+    logical, optional :: doBkg
+
     logical WantReion
     type(CAMBParams)  P
     integer error
@@ -609,8 +635,13 @@
         WantReion = .true.
     end if
 
-    call this%CMBToCAMB(CMB, P)
-    call CAMBParams_Set(P,error,WantReion)
+    !Modified by Clement Leloup
+    !call this%CMBToCAMB(CMB, P)
+    call this%CMBToCAMB(CMB, P, H)
+
+    !Modified by Clement Leloup
+    !call CAMBParams_Set(P,error,WantReion)
+    call CAMBParams_Set(P,error,WantReion, doBkg)
 
     end subroutine CAMBCalc_InitCAMB
 
@@ -645,7 +676,7 @@
 
     !Modified by Clement Leloup
     !function CAMBCalc_CMBToTheta(this,CMB) result(CMBToTheta)
-    function CAMBCalc_CMBToTheta(this,CMB, error) result(CMBToTheta)
+    function CAMBCalc_CMBToTheta(this,CMB, error, H) result(CMBToTheta)
 
     use ModelParams
     class(CAMB_Calculator) :: this
@@ -653,14 +684,43 @@
     real(mcp) CMBToTheta
     integer error
 
-    call this%InitCAMB(CMB,error,.false.)
+    !Modified by Clement Leloup
+    real(mcp), optional :: H
 
     !Modified by Clement Leloup
-    if (error/=0) then
-       return
-    end if
+    if(present(H) .and. CosmoSettings%use_galileon)then
+!!$       if(H < 0)then
+!!$          call this%InitCAMB(CMB, error, .false., H)
+!!$          CMBToTheta = 0
+!!$       else
+!!$          call this%InitCAMB(CMB, error, .false., H, .false.)
+!!$          CMBToTheta = CosmomcThetaGalileon(CMB%ombh2, CMB%omdmh2, CMB%omch2, H, error)
+          call this%InitCAMB(CMB, error, .false., H, .true.)
+          if (error/=0) then
+             CMBToTheta = 0
+             return
+          end if
+          
+          CMBToTheta = CosmomcTheta()
 
-    CMBToTheta = CosmomcTheta()
+!!$       end if
+!!$       if (error/=0) then
+!!$          CMBToTheta = 0
+!!$          return
+!!$       end if
+    else
+       !Modified by Clement Leloup
+       !call this%InitCAMB(CMB,error,.false.)
+       call this%InitCAMB(CMB, error, .false.)
+
+       !Modified by Clement Leloup
+       if (error/=0) then
+          CMBToTheta = 0
+          return
+       end if
+
+       CMBToTheta = CosmomcTheta()
+    end if
 
     end function CAMBCalc_CMBToTheta
 
@@ -673,6 +733,17 @@
     CAMBCalc_BAO_D_v = BAO_D_v(z)
 
     end function CAMBCalc_BAO_D_v
+
+
+    !Modified by Clement Leloup
+    real(mcp) function CAMBCalc_GW_light_dt(this, z)
+    use CAMB, only : GW_light_dt
+    class(CAMB_Calculator) :: this
+    real(mcp), intent(IN) :: z
+
+    CAMBCalc_GW_light_dt = GW_light_dt(z)
+
+    end function CAMBCalc_GW_light_dt
 
 
     real(mcp) function CAMBCalc_AngularDiameterDistance(this, z)

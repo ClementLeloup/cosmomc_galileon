@@ -4,8 +4,9 @@ module interface
   implicit none
 
   interface
+     !from galileon.cc file
      function arrays(omegar, omegam, H0in, c2in, c3in, c4in, cGin, grhormass, nu_masses, nu_mass_eigenstates) bind(C, name='arrays_')
-       import C_CHAR, C_DOUBLE, C_INT, C_PTR ! Make iso c binding visible here
+       import C_DOUBLE, C_INT, C_PTR ! Make iso c binding visible here
        real(kind=C_DOUBLE) :: omegar, omegam, H0in, c2in, c3in, c4in, cGin
        integer(C_INT) :: nu_mass_eigenstates
        type(C_PTR), value :: grhormass, nu_masses
@@ -26,6 +27,11 @@ module interface
       import C_PTR, C_DOUBLE
       real(kind=C_DOUBLE) :: point, hcamb, xcamb, dh, dx
     end subroutine GetdHdX
+
+    function ct(point) bind(C, name='ct_')
+      import C_DOUBLE
+      real(kind=C_DOUBLE) :: point, ct
+    end function ct
 
     function grhogal(point, hcamb, xcamb) bind(C, name='grhogal_')
       import C_DOUBLE
@@ -77,5 +83,6 @@ module interface
     subroutine freegal() bind(C, name='freegal_')
       !subroutine to free non-necessary memory after perturbation calculations
     end subroutine freegal
-  end interface
+    
+ end interface
 end module interface

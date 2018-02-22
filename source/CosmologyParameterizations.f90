@@ -28,6 +28,7 @@
 
     !Modified by Clement Leloup
     procedure :: H0FromThetaGalileon => TP_H0FromThetaGalileon
+    procedure :: TP_H0FromThetaGalileonbis
 
     procedure :: NonBaseParameterPriors => TP_NonBaseParameterPriors
     procedure :: CalcDerivedParams => TP_CalcDerivedParams
@@ -128,6 +129,9 @@
     Type(CMBParams), pointer :: CP2
     integer error
 
+    !Modified by Clement Leloup
+    real start1, start2, finish1, finish2
+
     select type(CosmoCalc=>this%Config%Calculator)
     class is (TCosmologyCalculator)
         select type (CMB)
@@ -149,7 +153,14 @@
 
             !Modified by Clement Leloup
             if(CosmoSettings%use_galileon) then
-               call this%H0FromThetaGalileon(Params, CMB, error)
+               !call cpu_time(start1)
+               !call this%H0FromThetaGalileon(Params, CMB, error)
+               !call cpu_time(finish1)
+               !print '("Time 1 = ",f6.3," seconds.")',finish1-start1
+               call cpu_time(start2)
+               call this%TP_H0FromThetaGalileonbis(Params, CMB, error)
+               call cpu_time(finish2)
+               print '("Time 2 = ",f6.3," seconds.")',finish2-start2
             else
                try_b = this%H0_min
                call SetForH(Params,CMB,try_b, .true.,error)  !JD for bbn related errors
@@ -375,6 +386,8 @@
               end if
            end if
 
+           print *, "first computation of H0 gives :", cmb%h0, DA, D_try
+
         end select
         class default
         call MpiStop('CosmologyParameterizations: Calculator is not TCosmologyCalculator')
@@ -382,6 +395,179 @@
 
     end subroutine TP_H0FromThetaGalileon
 
+    !Modified by Clement Leloup
+    subroutine TP_H0FromThetaGalileonbis(this, Params, CMB, error)
+    class(ThetaParameterization) :: this
+    real(mcp) Params(:)
+    Class(TTheoryParams), target :: CMB
+    integer error , i
+    logical dichotomy
+    real(mcp) try_b, try_t, step, lasttry, min, max
+    real(mcp) theta_b, theta_t, DA, D_try, try_theta, try_test
+    real(mcp) finish, start
+
+    select type(CosmoCalc=>this%Config%Calculator)
+    class is (TCosmologyCalculator)
+        select type (CMB)
+        class is (CMBParams)
+
+           dichotomy = .false.
+
+           error = 0
+           DA = Params(3)/100
+
+           try_b = this%H0_min
+           min = try_b
+           try_t = this%H0_max
+           max = try_t
+           theta_b = 0
+           theta_t = 99999
+           try_theta = 0
+
+           ! step to explore the H0 interval
+           step = (this%H0_max - this%H0_min)*0.1
+
+           ! Initialize CMB and calculate 
+           call SetForH(Params, CMB, try_b, .true.)
+
+           do 
+              if(step<0.01)then
+                 cmb%H0=0
+                 if (Feedback>1) write(*,*) instance, 'This set of parameters is bad, no H0 allowed.'
+                 return
+              end if
+
+!              !$OMP PARALLEL DO DEFAULT(SHARED), &
+!              !$OMP PRIVATE(try_theta, error)
+              do i=0, 10
+                !call cpu_time(start)
+                try_theta = CosmoCalc%CMBToTheta(CMB, error, try_b + i*step)
+                !call cpu_time(finish)
+                !print '("Time theta = ",f6.3," seconds.")',finish-start
+                 if(error==0)then
+                    if(theta_b < try_theta .and. try_theta < DA)then
+                       theta_b = try_theta
+                       min = try_b+i*step
+                    else if(DA < try_theta .and. try_theta < theta_t)then
+                       theta_t = try_theta
+                       max = try_b+i*step
+                    end if
+                 end if
+                 if(max == min+step) exit
+              end do
+!              !$OMP END PARALLEL DO
+
+              if(theta_b==0 .and. theta_t==99999)then
+                 cmb%H0=0
+                 if (Feedback>1) write(*,*) instance, 'This set of parameters is bad, no H0 allowed.'
+                 return
+              end if
+
+              if(max /= min+step)then
+                 if(theta_b==0)then
+                    min = max-step
+                 else if(theta_t==99999)then
+                    max = min+step
+                 end if
+                 print *, "reduce step"
+                 step = (max-min)*0.1
+                 try_b = min
+              else
+                 try_b = min
+                 try_t = max
+                 exit
+              end if
+           end do
+
+           !Now that boundaries are set, find solution with false position method
+           lasttry = -1
+           do
+              if(dichotomy)then
+                 try_test = (try_b+try_t)/2
+              else
+                 try_test = try_b + (DA-theta_b)*(try_t-try_b)/(theta_t-theta_b)
+              end if
+
+              call SetForH(Params,CMB,try_test, .false.)
+              D_try = CosmoCalc%CMBToTheta(CMB, error)
+              !print *, try_b, try_t, try_test, D_try, DA
+              if(error/=0)then
+                 cmb%H0=0
+                 return
+              end if
+
+              !Check that theta is increasing
+              if(D_try < theta_b .or. D_try > theta_t)then
+                 error = -1
+                 if (Feedback>1) write(*,*) instance, 'Theta is decreasing at H0= ', CMB%H0
+                 return
+              end if
+
+              if(try_test-try_b < 0.01*(try_t-try_b) .and. D_try < DA) then
+                 try_test = (try_b+try_t)/2
+                 call SetForH(Params,CMB,try_test, .false.)
+                 D_try = CosmoCalc%CMBToTheta(CMB, error)
+                 if(error/=0)then
+                    cmb%H0=0
+                    return
+                 end if
+
+                 !Check that theta is increasing
+                 if(D_try < theta_b .or. D_try > theta_t)then
+                    error = -1
+                    if (Feedback>1) write(*,*) instance, 'Theta is decreasing at H0= ', CMB%H0
+                    return
+                 end if
+
+                 dichotomy = .true.
+
+              else if(try_t-try_test < 0.01*(try_t-try_b) .and. DA < D_try)then
+                 try_test = (try_b+try_t)/2
+                 call SetForH(Params,CMB,try_test, .false.)
+                 D_try = CosmoCalc%CMBToTheta(CMB, error)
+                 if(error/=0)then
+                    cmb%H0=0
+                    return
+                 end if
+                 
+                 !Check that theta is increasing
+                 if(D_try < theta_b .or. D_try > theta_t)then
+                    error = -1
+                    if (Feedback>1) write(*,*) instance, 'Theta is decreasing at H0= ', CMB%H0
+                    return
+                 end if
+
+                 dichotomy = .true.
+
+              end if
+
+              if (D_try < DA) then
+                 try_b = try_test
+                 theta_b = D_try
+              else
+                 try_t = try_test
+                 theta_t = D_try
+              end if
+              !if (abs(D_try - lasttry)/D_try< 1e-7) exit
+              if (abs(D_try - DA)/D_try< 1e-7) exit
+              lasttry = D_try
+           end do
+
+           !!call InitCAMB(CMB,error)
+           if (CMB%tau==0._mcp) then
+              CMB%zre=0
+           else
+              CMB%zre = CosmoCalc%GetZreFromTau(CMB, CMB%tau)
+           end if
+
+           print *, "second computation of H0 gives :", cmb%h0, DA, D_try
+
+        end select
+        class default
+        call MpiStop('CosmologyParameterizations: Calculator is not TCosmologyCalculator')
+    end select
+
+    end subroutine TP_H0FromThetaGalileonbis
 
     function GetYPBBN(Yhe)
     !Convert yhe defined as mass fraction (CMB codes), to nucleon ratio definition
@@ -582,15 +768,15 @@
         end if
 
         !Modified by Clement Leloup
-    if (CosmoSettings%use_galileon) then
-       CMB%c2 = Params(15)
-       CMB%c3 = Params(16)
-       CMB%c4 = Params(17)
-       CMB%cG = Params(18)
-       grhog = kappa/c**2*4*sigma_boltz/c**3*COBE_CMBTemp**4*Mpc**2
-       omrad = (1 + 7._mcp/8*(4._mcp/11)**(4._mcp/3)*CMB%nnu)*grhog/3*CMB%H0**2/c**2*1000**2
-       CMB%c5 = 1./7*(-1 + CMB%omb + CMB%omdm + omrad + CMB%c2/6 - 2*CMB%c3 + 7.5*CMB%c4 - 3*CMB%cG) ! Careful here, radiation hard coded
-    end if
+        if (CosmoSettings%use_galileon) then
+           CMB%c2 = Params(15)
+           CMB%c3 = Params(16)
+           CMB%c4 = Params(17)
+           CMB%cG = Params(18)
+           grhog = kappa/c**2*4*sigma_boltz/c**3*COBE_CMBTemp**4*Mpc**2
+           omrad = (1 + 7._mcp/8*(4._mcp/11)**(4._mcp/3)*CMB%nnu)*grhog/3*CMB%H0**2/c**2*1000**2
+           CMB%c5 = 1./7*(-1 + CMB%omb + CMB%omdm + omrad + CMB%c2/6 - 2*CMB%c3 + 7.5*CMB%c4 - 3*CMB%cG) ! Careful here, radiation hard coded
+        end if
 
         call SetFast(Params,CMB)
     end if
@@ -602,6 +788,13 @@
     CMB%omnu = CMB%omnuh2/h2
     CMB%omdm = CMB%omdmh2/h2
     CMB%omv = 1- CMB%omk - CMB%omb - CMB%omdm
+
+    !Modified by Clement Leloup
+    if (CosmoSettings%use_galileon) then
+       grhog = kappa/c**2*4*sigma_boltz/c**3*COBE_CMBTemp**4*Mpc**2
+       omrad = (1 + 7._mcp/8*(4._mcp/11)**(4._mcp/3)*CMB%nnu)*grhog/3*CMB%H0**2/c**2*1000**2
+       CMB%c5 = 1./7*(-1 + CMB%omb + CMB%omdm + omrad + CMB%c2/6 - 2*CMB%c3 + 7.5*CMB%c4 - 3*CMB%cG) ! Careful here, radiation hard coded
+    end if
 
     end subroutine SetForH
 
@@ -699,7 +892,9 @@
     real(mcp) :: P(:)
     Type(CMBParams) CMB
 
-    allocate(Derived(1))
+    !Modified by Clement Leloup
+    !allocate(Derived(1))
+    allocate(Derived(2))
 
     call this%ParamArrayToTheoryParams(P,CMB)
 

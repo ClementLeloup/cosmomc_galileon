@@ -93,8 +93,6 @@
          omegam = CP%omegab + CP%omegac
          hub = CP%h0/c*1000
 
-         !print *, "omegabh2 :", CP%omegab*CP%h0**2/10000, "omegach2 :", CP%omegac*CP%h0**2/10000
-
          !Set the background with parameters from input file
          status = arrays(omegar, omegam, hub, CP%c2, CP%c3, CP%c4, CP%cG, C_LOC(grhormass(1)), C_LOC(nu_masses(1)), CP%nu_mass_eigenstates)
          if (status /= 0) then

@@ -50,6 +50,7 @@
 #include <gsl/gsl_spline.h>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_integration.h>
+#include <sys/types.h>
 
 #include <vector>
 
@@ -86,11 +87,14 @@ double c5 = 0;
 double cG = 0;
 double c0 = 0; // not implemented with c0 yet, but in case it is one day ...
 double q = 0;
+double noghost_previous = 0;
+double cs2_previous = 0;
+int tracker = 0;
 
 // External functions from fortran
 extern"C" void massivenu_mp_nu_rho_(double* am, double* rhonu);
 extern"C" void massivenu_mp_nu_background_(double* am, double* rhonu, double* pnu);
-extern"C" void massivenu_mp_nurhopres_(double* am, double* rhonu, double* pnu);
+// extern"C" void massivenu_mp_nurhopres_(double* am, double* rhonu, double* pnu);
 
 // Return absolute max of vector
 double maxVec(std::vector<double> vec){
@@ -119,7 +123,7 @@ double maxVec(std::vector<double> vec){
 
   Tested with Mathematica with c0 and y0 = 0.
  */
-int calcPertOmC2C3C4C5CGC0(double a, const double y[3]) {
+int calcPertOmC2C3C4C5CGC0(double a, const double y[3], double* grhormass, double* nu_masses, int* nu_mass_eigenstates) {
 
   fflush(stdout);
 
@@ -149,6 +153,22 @@ int calcPertOmC2C3C4C5CGC0(double a, const double y[3]) {
   double omega = -2*c0*h2 + 2*c3*h2*prod2 - 12*c4*h3*prod3 + 15*c5*h4*prod4 + 4.0*cG*h3*prod;
   double denom = sigma*beta - alpha*omega;
 
+  // if(a == 1.) printf("arrays_ a : %.16f \t alpha : %.16f \t gamma : %.16f \t beta : %.16f \t sigma : %.16f \t lambda : %.16f \t omega : %.16f \t h : %.16f \t x : %.16f\n", a, alpha, gamma, beta, sigma, lambda, omega, h, xgal);
+
+  // Add massive neutrinos
+  if((*nu_mass_eigenstates)>0){
+    for(int i = 0; i<(*nu_mass_eigenstates); i++){
+      double rhonu = 0;
+      double pnu = 0;
+      double am = a*nu_masses[i];
+      massivenu_mp_nu_background_(&am, &rhonu, &pnu);
+      lambda += grhormass[i]*pnu/(a*a*a*a*h0*h0);
+      // if(0.01 <= a && a <= 0.012) printf("arrays_ i : %d \t a : %.16f \t am : %.16f \t rhonu : %.16f \t lambda_numass : %.16f\n", i, a, am, rhonu, grhormass[i]*pnu/(a*a*a*a*h0*h0));
+    }
+  }
+
+  // printf("arrays_ a : %.16f \t alpha : %.16f \t gamma : %.16f \t beta : %.16f \t sigma : %.16f \t lambda : %.16f \t omega : %.16f \t h : %.16f \t x : %.16f\n", a, alpha, gamma, beta, sigma, lambda, omega, h, xgal);
+
   double dhdlna = (omega*gamma - lambda*beta)/denom;
   double dxdlna = (alpha*lambda - sigma*gamma)/denom - xgal;
 
@@ -161,6 +181,12 @@ int calcPertOmC2C3C4C5CGC0(double a, const double y[3]) {
 
   double noghost = k2 + 1.5*k5*k5/k4;
   double cs2 = (4*k1*k4*k5 - 2*k3*k5*k5 - 2*k4*k4*k6)/(k4*(2*k4*k2 + 3*k5*k5));
+
+  if(a==1){
+    noghost_previous = noghost;
+    cs2_previous = cs2;
+  }
+
   // Here we can't have a condition noghost>0 because with some set of
   // parameters we have noghost=1e-16, condition passes anyway
   // and then rk4 fails and gives NaN values.
@@ -172,22 +198,44 @@ int calcPertOmC2C3C4C5CGC0(double a, const double y[3]) {
   // // To test theoretical constraints
   // printf("a = %.12f \t Qs = %.12f \t cs2 = %.12f \t Qt = %.12f \t cT2 = %f \t OmegaPi = %.12f\n om = %.12f \t orad = %.12f \t c2 = %.12f \t c3 = %.12f \t c4 = %.12f \t cG = %.12f\n", a, noghost, cs2, noghostt, ct2, OmegaP, om, orad, c2, c3, c4, cG);
 
-  if(noghost>-1e-8){
-    // fprintf(stderr, "Error : scalar no ghost constraint not verified : a = %.12f \t Qs = %.12f\n", a, noghost);
-    return 1;
+  
+  // printf("arrays_ a : %.16f \t Qs : %.16f \t cs2 : %.16f \t QT : %.16f \t cT2 : %.16f \t h : %.16f \t x : %.16f\n", a, noghost, cs2, noghostt, ct2, h, xgal);
+  // printf("arrays_ a : %.16f \t dhdlna : %.16f \t dxdlna : %.16f \t k1 : %.16f \t k2 : %.16f \t k3 : %.16f \t k4 : %.16f \t k5 : %.16f \t k6 : %.16f\n", a, dhdlna, dxdlna, k1, k2, k3, k4, k5, k6);
+
+  // if(noghost>-1e-8){
+  if(noghost>-1.0){
+    // if(noghost<-1e-8 && fabs((noghost-noghost_previous)/noghost)>0.25){
+    //   fprintf(stderr, "Error : critical zone for scalar no ghost constraint a = %.12f \t Qs = %.12f \t previous Qs = %.12f\n", a, noghost, noghost_previous);
+    //   return 1;
+    // }
+    if(noghost>-1e-8){
+      fprintf(stderr, "Error : safe zonescalar no ghost constraint not verified : a = %.12f \t Qs = %.12f\n", a, noghost);
+      return 1;
+    }
   }
   if(cs2<0){
-    // fprintf(stderr, "Error : complex sound speed : a = %.12f \t cs2 = %.12f\n", a, cs2);
+    fprintf(stderr, "Error : complex sound speed : a = %.12f \t cs2 = %.12f\n", a, cs2);
     return 2;
   }
   if(noghostt < 0){
-    // fprintf(stderr, "Error : tensorial no ghost constraint not verified : a = %.12f \t Qt = %.12f\n", a, noghostt);
+    fprintf(stderr, "Error : tensorial no ghost constraint not verified : a = %.12f \t Qt = %.12f\n", a, noghostt);
     return 3;
   }
   if(ct2 < 0){
-    // fprintf(stderr, "Error : Laplace stability condition not verified : a = %f \t cT2 = %f\n", a, ct2);
+    fprintf(stderr, "Error : Laplace stability condition not verified : a = %.12f \t cT2 = %.12f\n", a, ct2);
     return 4;
   }
+
+  if(noghost>-1.0 && noghost<-1e-8 && fabs((noghost-noghost_previous)/noghost)>0.25){
+    fprintf(stderr, "WARNING : critical zone for scalar no ghost constraint a = %.12f \t Qs = %.12f \t previous Qs = %.12f\n", a, noghost, noghost_previous);
+    return 1;
+  }
+  noghost_previous = noghost;
+  if(fabs((cs2-cs2_previous)/cs2_previous)>1){
+    fprintf(stderr, "WARNING : cs2 is diverging  a = %.12f \t cs2 = %.12f \t previous cs2 = %.12f\n", a, cs2, cs2_previous);
+    return 2;
+  }
+  cs2_previous = cs2;
 
   return 0;
 
@@ -320,7 +368,7 @@ int calcHubbleGalileon(double* intvar, double* xgalileon, double* hubble, double
     }
 
     // testPert = calcPertOmC2C3C4C5CGC0(intvar[i], y);
-    int testPert = calcPertOmC2C3C4C5CGC0(a, y);
+    int testPert = calcPertOmC2C3C4C5CGC0(a, y, grhormass, nu_masses, nu_mass_eigenstates);
     if(testPert != 0){
       gsl_odeiv_evolve_free(e);
       gsl_odeiv_control_free(c);
@@ -357,16 +405,16 @@ int calcHubbleGalileon(double* intvar, double* xgalileon, double* hubble, double
     // printf("Test on OmegaM : %f %f %f %f %f %f %f %f %f %f %f %f %f %f %.12f\n", om, orad, c2, c3, c4, c5, cG, c0, OmTest, OmegaM, orad/(a3*a*h2), OmegaP, a3*h2, intvar[i], fabs((OmegaM - OmTest)/OmTest));
     // // printf("lambda : %.12f\tusual : %.12f\tfrom massive neutrinos : %.12f\n", lambda, 3.0*h2 + orad/(a3*intvar[i]) - 2.0*c0*h2*x1 - 2.0*c3*h2*h2*x3 + c2/2.0*h2*x2 + 7.5*c4*h2*h2*h2*x2*x2 - 9.0*c5*h2*h2*h2*h2*x3*x2 - cG*h2*h2*x2, grhormass[0]*nuPres(intvar[i]*nu_masses[0])/(a3*intvar[i]*h0*h0));
 
-    if(OmegaP<0){
+    // if(OmegaP<0){
       // fprintf(stderr, "Negative galileon energy density : a = %.12f \t %.12f\n", a, OmegaP);
-      gsl_odeiv_evolve_free(e);
-      gsl_odeiv_control_free(c);
-      gsl_odeiv_step_free(s);
-      return 5;
-    }
+      // gsl_odeiv_evolve_free(e);
+      // gsl_odeiv_control_free(c);
+      // gsl_odeiv_step_free(s);
+      // return 5;
+    // }
 
     if ( fabs((OmegaM - OmTest)/OmTest)>1e-4 ) {
-      fprintf(stderr, "Integration error : %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n", om, orad, c2, c3, c4, c5, cG, c0, OmTest, OmegaM, OmegaP, OmegaM - 1 + OmegaP + orad/(a3*intvar[i]*h2), a, fabs((OmegaM - OmTest)/OmTest));
+      fprintf(stderr, "Integration error : %f %f %f %f %f %f %f %f %f %f %f %f %f %.16f %f\n", om, orad, c2, c3, c4, c5, cG, c0, h0*2.99792458e8/1000, OmTest, OmegaM, OmegaP, OmegaM - 1 + OmegaP + orad/(a3*intvar[i]*h2), a, fabs((OmegaM - OmTest)/OmTest));
       gsl_odeiv_evolve_free(e);
       gsl_odeiv_control_free(c);
       gsl_odeiv_step_free(s);
@@ -447,21 +495,64 @@ extern "C" int arrays_(double* omegar, double* omegam, double* H0in, double* c2i
   orad = (*omegar);
   h0 = (*H0in);
   c2 = (*c2in);
-  c3 = (*c3in);
-  c4 = (*c4in);
   cG = (*cGin);
-  c5 = (-1. + om + orad + c2/6. - 2*c3 + 7.5*c4 - 3*cG)/7.;
 
-  // Add massive neutrinos
-  double rhonu = 0;
-  double grhom = 3*pow(h0, 2); // critical density
-  if((*nu_mass_eigenstates)>0){
-    for(int i = 0; i<(*nu_mass_eigenstates); i++){
-      massivenu_mp_nu_rho_(&(nu_masses[i]), &rhonu);
-      c5 += rhonu*grhormass[i]/(7.*grhom);
-      // printf("Omeganu of mass eigenstate %d = %.16f\n", i, rhonu*grhormass[i]*0.726*0.726*94.07/grhom);
+  if((*c3in) == 0 && (*c4in) == 0){
+    c3 = 0.5*(-1. + om + orad + c2/6. - 3*cG)/2.;
+
+    // Add massive neutrinos
+    double rhonu = 0;
+    double grhom = 3*pow(h0, 2); // critical density
+    if((*nu_mass_eigenstates)>0){
+      for(int i = 0; i<(*nu_mass_eigenstates); i++){
+	massivenu_mp_nu_rho_(&(nu_masses[i]), &rhonu);
+	// printf("i : nu_masses = %.18f\tgrhormass = %.18e\trhonu = %.18f\tgrhom = %.18f\ttest1 = %.18f\ttest2 = %.18f\ttest3 = %.18f\tc5 = %.18f\n", nu_masses[i], grhormass[i], rhonu, grhom, om + orad, c2/6., - 2*c3 + 7.5*c4 - 3*cG, c5);
+	c3 += rhonu*grhormass[i]/(2.*grhom);
+	// printf("Omeganu of mass eigenstate %d = %.16f\n", i, rhonu*grhormass[i]/grhom);
+      }
+    }
+
+    c4 = 0;
+    c5 = 0;
+  } else if((*c4in) == 0){
+    c3 = (*c3in);
+    c4 = (1. - om - orad - c2/6. + 2*c3 - 7.5*c4 + 3*cG)/7.5;
+
+    // Add massive neutrinos
+    double rhonu = 0;
+    double grhom = 3*pow(h0, 2); // critical density
+    if((*nu_mass_eigenstates)>0){
+      for(int i = 0; i<(*nu_mass_eigenstates); i++){
+	massivenu_mp_nu_rho_(&(nu_masses[i]), &rhonu);
+	// printf("i : nu_masses = %.18f\tgrhormass = %.18e\trhonu = %.18f\tgrhom = %.18f\ttest1 = %.18f\ttest2 = %.18f\ttest3 = %.18f\tc5 = %.18f\n", nu_masses[i], grhormass[i], rhonu, grhom, om + orad, c2/6., - 2*c3 + 7.5*c4 - 3*cG, c5);
+	c4 += -rhonu*grhormass[i]/(7.5*grhom);
+	// printf("Omeganu of mass eigenstate %d = %.16f\n", i, rhonu*grhormass[i]/grhom);
+      }
+    }
+
+    c5 = 0;
+  } else{
+    c3 = (*c3in);
+    c4 = (*c4in);
+    c5 = (-1. + om + orad + c2/6. - 2*c3 + 7.5*c4 - 3*cG)/7.;
+
+    // Add massive neutrinos
+    double rhonu = 0;
+    double grhom = 3*pow(h0, 2); // critical density
+    if((*nu_mass_eigenstates)>0){
+      for(int i = 0; i<(*nu_mass_eigenstates); i++){
+	massivenu_mp_nu_rho_(&(nu_masses[i]), &rhonu);
+	// printf("i : nu_masses = %.18f\tgrhormass = %.18e\trhonu = %.18f\tgrhom = %.18f\ttest1 = %.18f\ttest2 = %.18f\ttest3 = %.18f\tc5 = %.18f\n", nu_masses[i], grhormass[i], rhonu, grhom, om + orad, c2/6., - 2*c3 + 7.5*c4 - 3*cG, c5);
+	c5 += rhonu*grhormass[i]/(7.*grhom);
+	// printf("Omeganu of mass eigenstate %d = %.16f\n", i, rhonu*grhormass[i]/grhom);
+      }
     }
   }
+
+  // Boolean to check whether it's a tracker solution
+  // tracker = (fabs(c2-6*c3+18*c4-15*c5-6*cG)<1e-7) ? 1 : 0;
+  // if(tracker) printf("Tracker criterion : %.12f\n", fabs(c2-6*c3+18*c4-15*c5-6*cG));
+  // printf("Tracker criterion : %.12f\n", fabs(c2-6*c3+18*c4-15*c5-6*cG));
 
   // The status of the integration, 0 if everything ok
   int status = 0;
@@ -484,16 +575,14 @@ extern "C" int arrays_(double* omegar, double* omegam, double* H0in, double* c2i
   // printf("Number of points : %i\n", nb+1);
   // fflush(stdout);
 
-  // printf("OmegaM0 = %.16f\nOmegaR0 = %.16f\nc0 = %.16f\nc2 = %.16f\nc3 = %.16f\nc4 = %.16f\nc5 = %.16f\ncG = %.16f\nh0 = %.16f km/s/Mpc\n", om, orad, c0, c2, c3, c4, c5, cG, h0*2.99792458e8/1000);
+  // printf("arrays_ OmegaM0 = %.18f\nOmegaR0 = %.18f\nc0 = %.18f\nc2 = %.18f\nc3 = %.18f\nc4 = %.18f\nc5 = %.18f\ncG = %.18f\nh0 = %.18f km/s/Mpc\n", om, orad, c0, c2, c3, c4, c5, cG, h0*2.99792458e8/1000);
   // fflush(stdout);
 
   // hubble.resize(intvar.size(), 999999);
   // xgalileon.resize(intvar.size(), 999999);
 
-  // printf("Tracker criterion : %.12f\n", fabs(c2-6*c3+18*c4-15*c5-6*cG));
-
   // Integrate and fill hubble and x both when tracker and not tracker
-  if(fabs(c2-6*c3+18*c4-15*c5-6*cG)>1e-8)
+  if(!tracker)
     {
       status = calcHubbleGalileon(intvar, xgalileon, hubble, grhormass, nu_masses, nu_mass_eigenstates);
     }
@@ -555,7 +644,16 @@ extern "C" double GetX_(double* point){
     exit(EXIT_FAILURE);
   }
 
-  double xgal = (*point)*gsl_spline_eval(spline_x, *point, acc);
+  double xgal = 0;
+  
+  if(!tracker){
+    xgal = (*point)*gsl_spline_eval(spline_x, *point, acc);
+  } else{
+    double a2 = (*point)*(*point);
+    double op = (c2/2.0 - 6.0*c3 + 22.5*c4 - 21.0*c5 - 9*cG )/3.0;
+    double hbar = sqrt(0.5*(om/(a2*(*point))+orad/(a2*a2)-3*cG)+sqrt(op/9+3*cG+0.25*pow(3*cG-om/(a2*(*point))-orad/(a2*a2),2)));
+    xgal = (*point)/(hbar*hbar);
+  }
 
   return xgal;
 
@@ -574,14 +672,22 @@ extern "C" double GetH_(double* point){
     exit(EXIT_FAILURE);
   }
 
-  double hbar = gsl_spline_eval(spline_h, *point, acc);
+  double hbar = 0;
+
+  if(!tracker){
+    hbar = gsl_spline_eval(spline_h, *point, acc);
+  } else{
+    double a2 =(*point)*(*point);
+    double op = (c2/2.0 - 6.0*c3 + 22.5*c4 - 21.0*c5 - 9*cG )/3.0;
+    hbar = sqrt(0.5*(om/(a2*(*point))+orad/(a2*a2)-3*cG)+sqrt(op/9+3*cG+0.25*pow(3*cG-om/(a2*(*point))-orad/(a2*a2),2)));
+  }
 
   return hbar;
 
 }
 
 // Functions that returns dh/dlna and dx/dlna
-extern "C" double* GetdHdX_(double* point, double* hcamb, double* xcamb, double& dh, double& dx){
+extern "C" void GetdHdX_(double* point, double* hcamb, double* xcamb, double& dh, double& dx){
 
   // Define variables to save memory
   double a2 = (*point)*(*point);
@@ -608,6 +714,25 @@ extern "C" double* GetdHdX_(double* point, double* hcamb, double* xcamb, double&
 
   dh = (omega*gamma-lambda*beta)/(sigma*beta-alpha*omega); // dh/dlna
   dx = -(*xcamb)+(alpha*lambda-sigma*gamma)/(sigma*beta-alpha*omega); // dx/dlna
+
+}
+
+extern "C" double ct_(double* point){
+
+  double xgal = GetX_(point);
+  double h = GetH_(point);
+  double prod = xgal*h;
+  double prod2 = prod*prod;
+  double prod4 = prod2*prod2;
+  double prod5 = prod4*prod;
+
+  double dh = 0;
+  double dx = 0;
+  GetdHdX_(point, &h, &xgal, dh, dx);
+
+  double ct = sqrt((0.5 + 0.25*c4*prod4 + 1.5*c5*prod4*h*(h*dx+dh*xgal) - 0.5*cG*prod2)/(0.5 - 0.75*c4*prod4 + 1.5*c5*prod5*h + 0.5*cG*prod2));
+
+  return ct;
 
 }
 
@@ -687,6 +812,8 @@ extern "C" double Chigal_(double* point, double* hcamb, double* xcamb, double* d
 
   if ((*point) >= 9.99999e-7) ChiG = beta*(ChitildeG + 0.5*alpha_Z*(*dgrho) + (alpha_Z - 2*alpha_eta)*(*k)*(*eta));
 
+  // printf("Chigal : %.12f\n", ChiG);
+
   // FILE* g = fopen("chigal/chigal_q0001.dat", "a");
   // fprintf(g, "%.16f ; %.16f ; %.16f ; %.16f ; %.16f ; %.16f\n", (*point), ChiG, (*dgrho), beta*ChitildeG, 0.5*beta*alpha_Z*(*dgrho), beta*(alpha_Z - 2*alpha_eta)*(*k)*(*eta));
   // fclose(g);
@@ -725,6 +852,8 @@ extern "C" double qgal_(double* point, double* hcamb, double* xcamb, double* dgq
 
   // if(-1e-5 < 1.5*alpha - 1 && 1.5*alpha - 1 < 1e-5) printf("WARNING : 1/beta_q is zero");
   if((*point) >= 9.99999e-7) qG = beta*(qtildeG + 1.5*alpha*(*dgq));
+
+  // printf("qgal : %.12f\n", qG);
 
   // FILE* g = fopen("qgal/qgal_q0001.dat", "a");
   // fprintf(g, "%.16f ; %.16f ; %.16f ; %.16f ; %.16f\n", (*point), qG, (*dgq), beta*qtildeG, 1.5*beta*alpha*(*dgq));
@@ -773,6 +902,8 @@ extern "C" double Pigal_(double* point, double* hcamb, double* xcamb, double* dh
 
   // if(-1e-5 < (alpha_phi - 2*alpha_sigprime+2) && (alpha_phi - 2*alpha_sigprime+2) < 1e-5) printf("WARNING : 1/beta_pi is zero");
   if((*point) >= 9.99999e-7) PiG = beta_pi*(PitildeG + (alpha_sigprime - 0.5*alpha_phi)*(*dgpi) + 0.5*(2*alpha_sigprime + alpha_sig - alpha_phi)*((*dgrho) + 3*h0*(*hcamb)/(*k)*(*dgq)) + (alpha_sig + alpha_sigprime)*(*k)*(*eta));
+
+  // printf("Pigal : %.12f\n", PiG);
 
   // FILE* g = fopen("pigal/pigal_q0001.dat", "a");
   // fprintf(g, "%.16f ; %.16f ; %.16f ; %.16f ; %.16f ; %.16f ; %.16f ; %.16f\n", (*point), PiG, (*dgpi), beta_pi*PitildeG, beta_pi*(0.5*alpha_phi - alpha_sigprime)*(*dgpi), beta_pi*(0.5*alpha_sig - 0.5*alpha_phi + alpha_sigprime)*(*dgrho), 3*beta_pi*(0.5*alpha_sig - 0.5*alpha_phi + alpha_sigprime)*h0*h/(*k)*(*dgq), beta_pi*(alpha_sig + alpha_sigprime)*(*k)*(*eta));
@@ -868,6 +999,8 @@ extern "C" double dphisecond_(double* point, double* hcamb, double* xcamb, doubl
   double ksi = alpha_Zprime/(h0*(*hcamb)*(2-beta_Z));
   double dphisecond = 0;
   if((*point) >= 9.99999e-7) dphisecond = -(alpha_gammaprime*h0*(*hcamb)*(*dphiprime) + alpha_gamma*pow(*k, 2)*(*dphi) + (0.5*alpha_Z + 2*ksi*(h0*(*hcamb) - 0.5*(h0*hprime + beta_Z*h0*(*hcamb)) + 0.25*(beta_Z_prime + beta_Z*h0*hprime)))*(*dgrho) + ksi*(1-beta_eta)*(*k)*(*dgq) + ksi*dotdeltaf + ksi*chiprimehat + (alpha_Z - 2*alpha_eta + 2*ksi*(2*beta_eta*h0*(*hcamb) - h0*hprime - beta_Z*h0*(*hcamb) - beta_eta_prime + 0.5*(beta_Z_prime + beta_Z*h0*hprime)))*(*k)*(*eta))/(alpha_gammasecond + ksi*beta_gammasecond);
+
+  // printf("dphisecond : %.12f\n", dphisecond);
 
   // FILE* g = fopen("dphisecond/dphisecond_q0001.dat", "a");
   // fprintf(g, "%.16f ; %.16f ; %.16f ; %.16f ; %.16f ; %.16f ; %.16f ; %.16f\n", (*point), dphisecond, alpha_gammaprime/alpha_gammasecond*h0*h*(*dphiprime), alpha_gamma/alpha_gammasecond*pow(*k, 2)*(*dphi), 0.5/alpha_gammasecond*(alpha_Z - 2*alpha_Zprime)*(*dgrho), (alpha_Z - alpha_Zprime - 2*alpha_eta)/alpha_gammasecond*(*k)*(*eta), (*dphiprime), (*dphi));
@@ -1076,6 +1209,7 @@ extern "C" void freegal_(){
 
 }
 
+
 int test(){
 
   fflush(stdout);
@@ -1083,7 +1217,15 @@ int test(){
   // orad = 8.063127541638e-5;
   // orad = 8e-5;
   // orad = 2.469e-5/(0.736*0.736)*(1+0.2271*3.046);
-  orad = 0;
+  orad = 8.6e-5;
+
+  // Test
+  om = 0.343371;
+  h0 = 60.*1000/(2.99792458e8);
+  c2 = -7.849576;
+  c3 = -2.943283;
+  c4 = -0.805668;
+  cG = -0.041145;
 
   // // Scenario 1
   // om = 0.279;
@@ -1095,7 +1237,7 @@ int test(){
 
   // // Scenario 2
   // om = 0.275;
-  // h0 = 73.6*1000/(2.99792458e8);
+  // h-1 = 73.6*1000/(2.99792458e8);
   // c2 = -4.1;
   // c3 = -1.5;
   // c4 = -0.78;

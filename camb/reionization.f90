@@ -233,13 +233,15 @@
         if (Reion%use_optical_depth) then
             if (Reion%optical_depth<0 .or. Reion%optical_depth > 0.9  .or. &
                 include_helium_fullreion .and. Reion%optical_depth<0.01) then
-            OK = .false.
+               !Modified by Clement Leloup
+               !OK = .false.
             write(*,*) 'Optical depth is strange. You have:', Reion%optical_depth
-            end if
+         end if
         else
             if (Reion%redshift < 0 .or. Reion%Redshift +Reion%delta_redshift*3 > Reionization_maxz .or. &
                 include_helium_fullreion .and. Reion%redshift < Reion%helium_redshift) then
-            OK = .false.
+               !Modified by Clement Leloup
+               !OK = .false.
             write(*,*) 'Reionization redshift strange. You have: ',Reion%Redshift
             end if
         end if

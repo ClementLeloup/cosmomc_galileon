@@ -261,13 +261,26 @@
     if (ChainOutFile%unit==0) return
 
     call Config%Parameterization%CalcDerivedParams(this%P, this%Theory, derived)
+
+    !Modified by Clement Leloup
+    print *, "derived1", size(derived)
+
     call DataLikelihoods%addLikelihoodDerivedParams(this%P, this%Theory, derived, this%Likelihoods, like)
 
     if (allocated(derived)) numderived = size(derived)
 
     allocate(output_array(num_params_used+numderived))
     output_array(:num_params_used) = this%P(params_used)
+
+    !Modified by Clement Leloup
+    print *, "num_params_used1", num_params_used
+
     if (numderived>0) output_array(num_params_used+1:) = derived
+
+    !Modified by Clement Leloup
+    print *, "num_params_used2", num_params_used
+    print *, "params_used", params_used
+    print *, "derived2", numderived
 
     call IO_OutputChainRow(ChainOutFile, mult, like, output_array)
 
