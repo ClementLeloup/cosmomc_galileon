@@ -797,7 +797,7 @@
       omegar = grhorad/grhom
       omegam = CP%omegab + CP%omegac
 
-      print *, "omegabh2 :", CP%omegab*CP%h0**2/10000, "omegach2 :", CP%omegac*CP%h0**2/10000, "h0 :", CP%h0
+!!$      print *, "omegabh2 :", CP%omegab*CP%h0**2/10000, "omegach2 :", CP%omegac*CP%h0**2/10000, "h0 :", CP%h0
       
       CosmomcThetaGalileon = theta(omegam, omegar, ombh2, CP%h0, astar, CP%c2, CP%c3, CP%c4, CP%cG, C_LOC(grhormass(1)), C_LOC(nu_masses(1)), CP%nu_mass_eigenstates)
       

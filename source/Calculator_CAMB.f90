@@ -689,21 +689,21 @@
 
     !Modified by Clement Leloup
     if(present(H) .and. CosmoSettings%use_galileon)then
-!!$       if(H < 0)then
-!!$          call this%InitCAMB(CMB, error, .false., H)
-!!$          CMBToTheta = 0
-!!$       else
-!!$          call this%InitCAMB(CMB, error, .false., H, .false.)
-!!$          CMBToTheta = CosmomcThetaGalileon(CMB%ombh2, CMB%omdmh2, CMB%omch2, H, error)
+       if(H < 0)then
+          call this%InitCAMB(CMB, error, .false., H)
+          CMBToTheta = 0
+       else
           call this%InitCAMB(CMB, error, .false., H, .true.)
           if (error/=0) then
              CMBToTheta = 0
              return
           end if
-          
           CMBToTheta = CosmomcTheta()
 
-!!$       end if
+!!$          call this%InitCAMB(CMB, error, .false., H, .false.)
+!!$          CMBToTheta = CosmomcThetaGalileon(CMB%ombh2, CMB%omdmh2, CMB%omch2, H, error)
+
+       end if
 !!$       if (error/=0) then
 !!$          CMBToTheta = 0
 !!$          return

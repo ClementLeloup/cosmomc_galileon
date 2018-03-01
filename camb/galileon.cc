@@ -498,7 +498,7 @@ extern "C" int arrays_(double* omegar, double* omegam, double* H0in, double* c2i
   cG = (*cGin);
 
   if((*c3in) == 0 && (*c4in) == 0){
-    c3 = 0.5*(-1. + om + orad + c2/6. - 3*cG)/2.;
+    c3 = 0.5*(-1. + om + orad + c2/6. - 3*cG);
 
     // Add massive neutrinos
     double rhonu = 0;
@@ -507,7 +507,7 @@ extern "C" int arrays_(double* omegar, double* omegam, double* H0in, double* c2i
       for(int i = 0; i<(*nu_mass_eigenstates); i++){
 	massivenu_mp_nu_rho_(&(nu_masses[i]), &rhonu);
 	// printf("i : nu_masses = %.18f\tgrhormass = %.18e\trhonu = %.18f\tgrhom = %.18f\ttest1 = %.18f\ttest2 = %.18f\ttest3 = %.18f\tc5 = %.18f\n", nu_masses[i], grhormass[i], rhonu, grhom, om + orad, c2/6., - 2*c3 + 7.5*c4 - 3*cG, c5);
-	c3 += rhonu*grhormass[i]/(2.*grhom);
+	c3 += 0.5*rhonu*grhormass[i]/(grhom);
 	// printf("Omeganu of mass eigenstate %d = %.16f\n", i, rhonu*grhormass[i]/grhom);
       }
     }

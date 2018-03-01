@@ -306,19 +306,60 @@ extern "C" double theta_(double* omegam, double* orad, double* ombh2, double* h0
   double c2 = (*c2in);
   double c3 = (*c3in);
   double c4 = (*c4in);
+  double c5 = 0;
   double cG = (*cGin);
-  double c5 = (-1. + om + omegar + c2/6. - 2*c3 + 7.5*c4 - 3*cG)/7.;
 
-  // Add massive neutrinos
-  double rhonu = 0;
-  double grhom = 3*pow((*h0)*1000/(2.99792458e8), 2); // critical density
-  if((*nu_mass_eigenstates)>0){
-    for(int i = 0; i<(*nu_mass_eigenstates); i++){
-      massivenu_mp_nu_rho_(&(nu_masses[i]), &rhonu);
-      // printf("ombh2 = %.16f \t omch2 = %.16f \t h0 = %.16f\n", (*ombh2), (*omch2), (*h0));
-      // printf("i : nu_masses = %.18f\tgrhormass = %.18e\trhonu = %.18f\tgrhom = %.18f\ttest1 = %.18f\ttest2 = %.18f\ttest3 = %.18f\tc5 = %.18f\n", nu_masses[i], grhormass[i], rhonu, grhom, om + omegar, c2/6., - 2*c3 + 7.5*c4 - 3*cG, c5);
-      c5 += rhonu*grhormass[i]/(7.*grhom);
-      // printf("Omeganu of mass eigenstate %d = %.16f\n", i, rhonu*grhormass[i]/grhom);
+  if((*c3in) == 0 && (*c4in) == 0){
+    c3 = 0.5*(-1. + om + omegar + c2/6. - 3*cG);
+
+    // Add massive neutrinos
+    double rhonu = 0;
+    double grhom = 3*pow((*h0)*1000/2.99792458e8, 2); // critical density
+    if((*nu_mass_eigenstates)>0){
+      for(int i = 0; i<(*nu_mass_eigenstates); i++){
+	massivenu_mp_nu_rho_(&(nu_masses[i]), &rhonu);
+	// printf("i : nu_masses = %.18f\tgrhormass = %.18e\trhonu = %.18f\tgrhom = %.18f\ttest1 = %.18f\ttest2 = %.18f\ttest3 = %.18f\tc5 = %.18f\n", nu_masses[i], grhormass[i], rhonu, grhom, om + orad, c2/6., - 2*c3 + 7.5*c4 - 3*cG, c5);
+	c3 += 0.5*rhonu*grhormass[i]/(grhom);
+	// printf("Omeganu of mass eigenstate %d = %.16f\n", i, rhonu*grhormass[i]/grhom);
+      }
+    }
+
+    c4 = 0;
+    c5 = 0;
+
+  } else if((*c4in) == 0){
+    c3 = (*c3in);
+    c4 = (1. - om - omegar - c2/6. + 2*c3 - 7.5*c4 + 3*cG)/7.5;
+
+    // Add massive neutrinos
+    double rhonu = 0;
+    double grhom = 3*pow((*h0)*1000/2.99792458e8, 2); // critical density
+    if((*nu_mass_eigenstates)>0){
+      for(int i = 0; i<(*nu_mass_eigenstates); i++){
+	massivenu_mp_nu_rho_(&(nu_masses[i]), &rhonu);
+	// printf("i : nu_masses = %.18f\tgrhormass = %.18e\trhonu = %.18f\tgrhom = %.18f\ttest1 = %.18f\ttest2 = %.18f\ttest3 = %.18f\tc5 = %.18f\n", nu_masses[i], grhormass[i], rhonu, grhom, om + orad, c2/6., - 2*c3 + 7.5*c4 - 3*cG, c5);
+	c4 += -rhonu*grhormass[i]/(7.5*grhom);
+	// printf("Omeganu of mass eigenstate %d = %.16f\n", i, rhonu*grhormass[i]/grhom);
+      }
+    }
+
+    c5 = 0;
+
+  } else{
+    c3 = (*c3in);
+    c4 = (*c4in);
+    c5 = (-1. + om + omegar + c2/6. - 2*c3 + 7.5*c4 - 3*cG)/7.;
+
+    // Add massive neutrinos
+    double rhonu = 0;
+    double grhom = 3*pow((*h0)*1000/2.99792458e8, 2); // critical density
+    if((*nu_mass_eigenstates)>0){
+      for(int i = 0; i<(*nu_mass_eigenstates); i++){
+	massivenu_mp_nu_rho_(&(nu_masses[i]), &rhonu);
+	// printf("i : nu_masses = %.18f\tgrhormass = %.18e\trhonu = %.18f\tgrhom = %.18f\ttest1 = %.18f\ttest2 = %.18f\ttest3 = %.18f\tc5 = %.18f\n", nu_masses[i], grhormass[i], rhonu, grhom, om + orad, c2/6., - 2*c3 + 7.5*c4 - 3*cG, c5);
+	c5 += rhonu*grhormass[i]/(7.*grhom);
+	// printf("Omeganu of mass eigenstate %d = %.16f\n", i, rhonu*grhormass[i]/grhom);
+      }
     }
   }
 
@@ -338,10 +379,10 @@ extern "C" double theta_(double* omegam, double* orad, double* ombh2, double* h0
     intvar[i] = amax*pow(q, i);
   }
 
-  // printf("theta_ OmegaM0 = %.18f\nOmegaR0 = %.18f\nc2 = %.18f\nc3 = %.18f\nc4 = %.18f\nc5 = %.18f\ncG = %.18f\nh0 = %.18f km/s/Mpc\n", om, (*orad), (*c2in), (*c3in), (*c4in), c5, (*cGin), (*h0));
+  // printf("theta_ OmegaM0 = %.18f\nOmegaR0 = %.18f\nc2 = %.18f\nc3 = %.18f\nc4 = %.18f\nc5 = %.18f\ncG = %.18f\nh0 = %.18f km/s/Mpc\n", om, (*orad), c2, c3, c4, c5, cG, (*h0));
   // fflush(stdout);
 
-  status = calcHubble(intvar, hbar, grhormass, nu_masses, nu_mass_eigenstates, om, (*orad), (*c2in), (*c3in), (*c4in), c5, (*cGin), (*h0), nb);
+  status = calcHubble(intvar, hbar, grhormass, nu_masses, nu_mass_eigenstates, om, (*orad), c2, c3, c4, c5, cG, (*h0), nb);
 
   printf("status = %i\n", status);
   if(status!=0) return -1;
