@@ -459,6 +459,7 @@
         !Modified by Clement Leloup
         if (CP%use_galileon) then
            write(*,'("Om_Phi            = ",f9.6)') CP%omegav
+           write(*,'("Delta_t           = ",f9.6)') GW_light_dt(9.787d-3)
         else
            write(*,'("Om_Lambda            = ",f9.6)') CP%omegav
         end if
@@ -688,13 +689,14 @@
 
     !Modified by Clement Leloup
     real(dl) function dt_gw_phot(a)
+      use iso_c_binding
       implicit none
       real(dl), intent(IN) :: a
       real(dl) dtauda, ct
       external ct, dtauda
 
       if(CP%use_galileon)then
-         dt_gw_phot = (1-1/ct(a))*dtda(a)
+         dt_gw_phot = (1-1/ct(a, C_LOC(grhormass(1)), C_LOC(nu_masses(1)), CP%nu_mass_eigenstates))*dtda(a)
       else
          dt_gw_phot = 0
       end if
@@ -1562,6 +1564,9 @@
 
     real(dl), dimension(:), allocatable ::  r1,p1,dr1,dp1,ddr1
 
+    !Modified by Clement Leloup
+    real(dl), dimension(:), allocatable :: ddp1
+
     !Sample for massive neutrino momentum
     !These settings appear to be OK for P_k accuate at 1e-3 level
     integer, parameter :: nqmax0=80 !maximum array size of q momentum samples
@@ -1570,7 +1575,7 @@
     integer nqmax !actual number of q modes evolves
 
     public const,Nu_Init,Nu_background, Nu_rho, Nu_drho,  nqmax0, nqmax, &
-        nu_int_kernel, nu_q, sum_mnu_for_m1, neutrino_mass_fac
+        nu_int_kernel, nu_q, sum_mnu_for_m1, neutrino_mass_fac, Nu_dp !Nu_dp added by Clement Leloup
     contains
     !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
@@ -1603,10 +1608,17 @@
     do i=1, CP%Nu_mass_eigenstates
         nu_masses(i)=const/(1.5d0*zeta3)*grhom/grhor*CP%omegan*CP%Nu_mass_fractions(i) &
             /CP%Nu_mass_degeneracies(i)
+
+        !Modified by Clement Leloup
+        !print *, grhor, zeta3, CP%omegan, CP%Nu_mass_degeneracies(i), nu_masses(i)
+
     end do
 
     if (allocated(r1)) return
     allocate(r1(nrhopn),p1(nrhopn),dr1(nrhopn),dp1(nrhopn),ddr1(nrhopn))
+
+    !Modified by Clement Leloup
+    allocate(ddp1(nrhopn))
 
 
     nqmax=3
@@ -1663,6 +1675,9 @@
     call splder(p1,dp1,nrhopn,spline_data)
     call splder(dr1,ddr1,nrhopn,spline_data)
 
+    !Modified by Clement Leloup
+    call splder(dp1,ddp1,nrhopn,spline_data)
+    
 
     end subroutine Nu_init
 
@@ -1802,6 +1817,37 @@
     end if
 
     end function Nu_drho
+
+    !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+    !Modified by Clement Leloup
+    function Nu_dp(am,adotoa,pnu) result (pnudot)
+    use precision
+    use ModelParams
+
+    !  Compute the time derivative of the mean density in massive neutrinos
+    !  and the shear perturbation.
+    real(dl) adotoa,pnu,pnudot
+    real(dl) d
+    real(dl), intent(IN) :: am
+    integer i
+    if (am < am_minp) then
+        pnudot=2*adotoa*(1._dl-const2*am**2)/3._dl - 4._dl/3._dl*adotoa
+    else if (am > am_maxp) then
+        pnudot = -900._dl/120._dl/const*(zeta5-189._dl/4*Zeta7/am**2)*adotoa/am
+    else
+       d=log(am/am_min)/dlnam+1._dl
+       i=int(d)
+       d=d-i
+       
+       !  Cubic spline interpolation.
+       pnudot=dp1(i)+d*(ddp1(i)+d*(3._dl*(dp1(i+1)-dp1(i)) &
+            -2._dl*ddp1(i)-ddp1(i+1)+d*(ddp1(i)+ddp1(i+1) &
+            +2._dl*(dp1(i)-dp1(i+1)))))
+       
+       pnudot=pnu*adotoa*pnudot/dlnam
+    end if
+
+    end function Nu_dp
 
     end module MassiveNu
 

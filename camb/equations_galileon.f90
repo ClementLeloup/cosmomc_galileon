@@ -1337,7 +1337,7 @@
     if (CP%use_galileon) then
        xgal = GetX(a)
        hub = a*GetH(a)
-       call GetdHdX(a, hub, xgal, dh, dx)
+       call GetdHdX(a, hub, xgal, dh, dx, C_LOC(grhormass(1)), C_LOC(nu_masses(1)), CP%nu_mass_eigenstates)
        grhogal_t=grhogal(a, hub, xgal)
        gpresgal_t=gpresgal(a, hub, xgal, dh, dx)
        grho=grho+grhogal_t
@@ -1485,7 +1485,7 @@
     !Modified by Clement Leloup
     if (CP%use_galileon) then
        diff_rhopi = pidot_sum - (4*(dgpi-dgpigal_t)+dgpi_diff)*adotoa
-       pigaldot = pigalprime(a, hub, xgal, dh, dx, dgrho, dgq, dgpi, diff_rhopi, etak, dphi, dphiprime, k, grho, gpres)
+       pigaldot = pigalprime(a, hub, xgal, dh, dx, dgrho, dgq, dgpi, diff_rhopi, etak, dphi, dphiprime, k, grho, gpres, C_LOC(grhormass(1)), C_LOC(nu_masses(1)), CP%nu_mass_eigenstates)
        diff_rhopi = diff_rhopi + pigaldot
     else
        diff_rhopi = pidot_sum - (4*dgpi+dgpi_diff)*adotoa
@@ -2168,7 +2168,7 @@
     if (CP%use_galileon) then
        xgal = GetX(a)
        hub = a*GetH(a)
-       call GetdHdX(a, hub, xgal, dh, dx)
+       call GetdHdX(a, hub, xgal, dh, dx, C_LOC(grhormass(1)), C_LOC(nu_masses(1)), CP%nu_mass_eigenstates)
        grhogal_t=grhogal(a, hub, xgal)
     else
        if (w_lam==-1._dl) then
@@ -2658,7 +2658,7 @@
     if (CP%use_galileon) then
        xgal = GetX(a)
        hub = GetH(a)
-       call GetdHdX(a, hub, xgal, dh, dx)
+       call GetdHdX(a, hub, xgal, dh, dx, C_LOC(grhormass(1)), C_LOC(nu_masses(1)), CP%nu_mass_eigenstates)
        grhogal_t=grhogal(a, hub, xgal)
        gpresgal_t=gpresgal(a, hub, xgal, dh, dx)
        grho=grho+grhogal_t
@@ -2836,7 +2836,7 @@
     if (CP%use_galileon) then
        xgal = GetX(a)
        hub = GetH(a)
-       call GetdHdX(a, hub, xgal, dh, dx)
+       call GetdHdX(a, hub, xgal, dh, dx, C_LOC(grhormass(1)), C_LOC(nu_masses(1)), CP%nu_mass_eigenstates)
        grhogal_t=grhogal(a, hub, xgal)
        grho=grho+grhogal_t
     else if (w_lam==-1._dl) then

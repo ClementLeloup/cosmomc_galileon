@@ -95,6 +95,9 @@ int tracker = 0;
 extern"C" void massivenu_mp_nu_rho_(double* am, double* rhonu);
 extern"C" void massivenu_mp_nu_background_(double* am, double* rhonu, double* pnu);
 // extern"C" void massivenu_mp_nurhopres_(double* am, double* rhonu, double* pnu);
+extern"C" double massivenu_mp_nu_dp_(double* am, double* adotoa, double* pnu);
+
+void background(char* outfile, double amin, int n);
 
 // Return absolute max of vector
 double maxVec(std::vector<double> vec){
@@ -538,12 +541,15 @@ extern "C" int arrays_(double* omegar, double* omegam, double* H0in, double* c2i
 
     // Add massive neutrinos
     double rhonu = 0;
+    double pnu = 0;
     double grhom = 3*pow(h0, 2); // critical density
     if((*nu_mass_eigenstates)>0){
       for(int i = 0; i<(*nu_mass_eigenstates); i++){
-	massivenu_mp_nu_rho_(&(nu_masses[i]), &rhonu);
+	// massivenu_mp_nu_rho_(&(nu_masses[i]), &rhonu);
+	massivenu_mp_nu_background_(&(nu_masses[i]), &rhonu, &pnu);
 	// printf("i : nu_masses = %.18f\tgrhormass = %.18e\trhonu = %.18f\tgrhom = %.18f\ttest1 = %.18f\ttest2 = %.18f\ttest3 = %.18f\tc5 = %.18f\n", nu_masses[i], grhormass[i], rhonu, grhom, om + orad, c2/6., - 2*c3 + 7.5*c4 - 3*cG, c5);
 	c5 += rhonu*grhormass[i]/(7.*grhom);
+	// printf("nu_mass = %.16f\trhonu = %.16f\tpnu = %.16f\tgrhormass = %.16f\tgrhom = %.16f\n", nu_masses[i], rhonu, pnu, grhormass[i], grhom);
 	// printf("Omeganu of mass eigenstate %d = %.16f\n", i, rhonu*grhormass[i]/grhom);
       }
     }
@@ -627,6 +633,8 @@ extern "C" int arrays_(double* omegar, double* omegam, double* H0in, double* c2i
   gsl_spline_init(spline_h, intvar_interp, hubble_interp, nb+1);
   gsl_spline_init(spline_x, intvar_interp, xgalileon_interp, nb+1);
 
+  // background("bg_test.dat", 1.0/(1.0+0.009787), 2999);
+
   return status;
   
 }
@@ -687,7 +695,7 @@ extern "C" double GetH_(double* point){
 }
 
 // Functions that returns dh/dlna and dx/dlna
-extern "C" void GetdHdX_(double* point, double* hcamb, double* xcamb, double& dh, double& dx){
+extern "C" void GetdHdX_(double* point, double* hcamb, double* xcamb, double& dh, double& dx, double* grhormass, double* nu_masses, int* nu_mass_eigenstates){
 
   // Define variables to save memory
   double a2 = (*point)*(*point);
@@ -710,6 +718,19 @@ extern "C" void GetdHdX_(double* point, double* hcamb, double* xcamb, double& dh
   double beta = c2/6*h2 -2*c3*h4*(*xcamb) + 9*c4*h6*xgal2 - 10*c5*h8*xgal3 - cG*h4;
   double sigma = 2*h + 2*c3*h3*xgal3 - 15*c4*h5*xgal4 + 21*c5*h7*xgal5 + 6*cG*h3*xgal2;
   double lambda = 3*h2 + orad/(a2*a2) + c2/2*h2*xgal2 - 2*c3*h4*xgal3 + 7.5*c4*h6*xgal4 - 9*c5*h8*xgal5 - cG*h4*xgal2;
+
+  // Contribution from massive neutrinos
+  if((*nu_mass_eigenstates)>0){
+    for(int i=0; i<(*nu_mass_eigenstates); i++){
+      double rhonu = 0;
+      double pnu = 0;
+      double am = (*point)*nu_masses[i];
+      massivenu_mp_nu_background_(&am, &rhonu, &pnu);
+      lambda += grhormass[i]*pnu/(a2*a2*h0*h0);
+      // printf("i : %d \t a : %.16f \t am : %.16f \t rhonu : %.16f \t lambda_numass : %.16f\n", i, a, am, rhonu, grhormass[i]*pnu/(a2*a2*h0*h0));
+    }
+  }
+
   double omega = 2*c3*h4*xgal2 - 12*c4*h6*xgal3 + 15*c5*h8*xgal4 + 4*cG*h4*(*xcamb);
 
   dh = (omega*gamma-lambda*beta)/(sigma*beta-alpha*omega); // dh/dlna
@@ -717,10 +738,11 @@ extern "C" void GetdHdX_(double* point, double* hcamb, double* xcamb, double& dh
 
 }
 
-extern "C" double ct_(double* point){
+extern "C" double ct_(double* point, double* grhormass, double* nu_masses, int* nu_mass_eigenstates){
 
   double xgal = GetX_(point);
   double h = GetH_(point);
+  double ha = (*point)*h;
   double prod = xgal*h;
   double prod2 = prod*prod;
   double prod4 = prod2*prod2;
@@ -728,7 +750,7 @@ extern "C" double ct_(double* point){
 
   double dh = 0;
   double dx = 0;
-  GetdHdX_(point, &h, &xgal, dh, dx);
+  GetdHdX_(point, &ha, &xgal, dh, dx, grhormass, nu_masses, nu_mass_eigenstates);
 
   double ct = sqrt((0.5 + 0.25*c4*prod4 + 1.5*c5*prod4*h*(h*dx+dh*xgal) - 0.5*cG*prod2)/(0.5 - 0.75*c4*prod4 + 1.5*c5*prod5*h + 0.5*cG*prod2));
 
@@ -1011,7 +1033,7 @@ extern "C" double dphisecond_(double* point, double* hcamb, double* xcamb, doubl
 }
 
 // Calculate the conformal time derivative of pigal
-extern "C" double pigalprime_(double* point, double* hcamb, double* xcamb, double* dhcamb, double* dxcamb, double* dgrho, double* dgq, double* dgpi, double* pidot, double* eta, double* dphi, double* dphiprime, double* k, double* grho, double* gpres){
+extern "C" double pigalprime_(double* point, double* hcamb, double* xcamb, double* dhcamb, double* dxcamb, double* dgrho, double* dgq, double* dgpi, double* pidot, double* eta, double* dphi, double* dphiprime, double* k, double* grho, double* gpres, double* grhormass, double* nu_masses, int* nu_mass_eigenstates){
 
   double hoft = (*hcamb)/(*point);
 
@@ -1054,6 +1076,20 @@ extern "C" double pigalprime_(double* point, double* hcamb, double* xcamb, doubl
   double beta_prime = (c2/3*hoft - 8*c3*hoft3*(*xcamb) + 54*c4*hoft5*xgal2 - 80*c5*hoft7*xgal3 - 4*cG*hoft3)*(hprime-(*hcamb))/(*point) + (-2*c3*hoft4 + 18*c4*hoft6*(*xcamb) - 30*c5*hoft8*xgal2)*(*dxcamb);
   double delta_prime = (2 + 6*c3*hoft2*xgal3 - 75*c4*hoft4*xgal4 + 147*c5*hoft6*xgal5 + 18*cG*hoft2*xgal2)*(hprime-(*hcamb))/(*point) + (6*c3*hoft3*xgal2 - 60*c4*hoft5*xgal3 + 105*c5*hoft7*xgal4 + 12*cG*hoft3*(*xcamb))*(*dxcamb);
   double lambda_prime = -4*orad/a4 + (6*hoft + c2*hoft*xgal2 - 8*c3*hoft3*xgal3 + 45*c4*hoft5*xgal4 - 72*c5*hoft7*xgal5 - 4*cG*hoft3*xgal2)*(hprime-(*hcamb))/(*point) + (c2*hoft2*(*xcamb) - 6*c3*hoft4*xgal2 + 30*c4*hoft6*xgal3 - 45*c5*hoft8*xgal4 - 2*cG*hoft4*(*xcamb))*(*dxcamb);
+
+  // Contribution from massive neutrinos
+  if((*nu_mass_eigenstates)>0){
+    for(int i=0; i<(*nu_mass_eigenstates); i++){
+      double pnu = 0;
+      double rhonu = 0;
+      double am = (*point)*nu_masses[i];
+      massivenu_mp_nu_background_(&am, &rhonu, &pnu);
+      lambda += grhormass[i]*pnu/(a2*a2*h0*h0);
+      double dpnu = massivenu_mp_nu_dp_(&am, hcamb, &pnu);
+      lambda_prime += (dpnu-4*pnu*(*hcamb))*grhormass[i]/(a2*a2*h0*h0);
+    }
+  }
+
   double omega_prime = (8*c3*hoft3*xgal2 - 72*c4*hoft5*xgal3 + 120*c5*hoft7*xgal4 + 16*cG*hoft3*(*xcamb))*(hprime-(*hcamb))/(*point) + (4*c3*hoft4*(*xcamb) - 36*c4*hoft6*xgal2 + 60*c5*hoft8*xgal3 + 4*cG*hoft4)*(*dxcamb);
 
   double xprimedot = h0*(*hcamb)*(-(*dxcamb) + ((alpha_prime*lambda + alpha*lambda_prime - delta_prime*gamma - delta*gamma_prime)*(delta*beta-alpha*omega) - (alpha*lambda-delta*gamma)*(delta_prime*beta + delta*beta_prime - alpha_prime*omega - alpha*omega_prime))/pow(delta*beta-alpha*omega, 2));
@@ -1210,6 +1246,68 @@ extern "C" void freegal_(){
 }
 
 
+void background(char* outfile, double amin, int n){
+
+  double intvar[n+1];
+  double hubble[n+1];
+  double x[n+1];
+
+  // The status of the integration, 0 if everything ok
+  int status = 0;
+  double amax = 1.;
+
+  double q2 = pow(amax/amin, 1./n);
+  for(int i = 0; i<=n; i++){
+    intvar[i] = amin*pow(q2, i);
+    x[i] = GetX_(&(intvar[i]));
+    hubble[i] = GetH_(&(intvar[i]));
+  }
+
+  FILE* f = fopen(outfile, "w");
+  for(int i = 0; i<n+1; i++){
+    double xgal = intvar[i]*x[i];
+    double xgal2 = xgal*xgal;
+    double xgal3 = xgal2*xgal;
+    double xgal4 = xgal2*xgal2;
+    double xgal5 = xgal3*xgal2;
+    double h = hubble[i]; // here H=dlna/dt
+    double h2 = h*h;
+    double h3 = h2*h;
+    double h4 = h2*h2;
+    double h5 = h3*h2;
+    double h6 = h3*h3;
+    double h7 = h4*h3;
+    double h8 = h4*h4;
+    double prod = xgal*h;
+    double prod2 = prod*prod;
+    double prod4 = prod2*prod2;
+    double prod5 = prod4*prod;
+
+    double alpha = c2/6*hubble[i]*x[i]-3*c3*pow(hubble[i], 3)*pow(x[i], 2) + 15*c4*pow(hubble[i], 5)*pow(x[i], 3) - 17.5*c5*pow(hubble[i], 7)*pow(x[i], 4) - 3*cG*pow(hubble[i], 3)*x[i];
+    double gamma = c2/3*pow(hubble[i], 2)*x[i]-c3*pow(hubble[i], 4)*pow(x[i], 2) + 2.5*c5*pow(hubble[i], 8)*pow(x[i], 4) - 2*cG*pow(hubble[i], 4)*x[i];
+    double beta = c2/6*pow(hubble[i], 2) -2*c3*pow(hubble[i], 4)*x[i] + 9*c4*pow(hubble[i], 6)*pow(x[i], 2) - 10*c5*pow(hubble[i], 8)*pow(x[i], 3) - cG*pow(hubble[i], 4);
+    double sigma = 2*hubble[i] + 2*c3*pow(hubble[i], 3)*pow(x[i], 3) - 15*c4*pow(hubble[i], 5)*pow(x[i], 4) + 21*c5*pow(hubble[i], 7)*pow(x[i], 5) + 6*cG*pow(hubble[i], 3)*pow(x[i], 2);
+    double lambda = 3*pow(hubble[i], 2) + orad/pow(intvar[i], 4) + c2/2*pow(hubble[i], 2)*pow(x[i], 2) - 2*c3*pow(hubble[i], 4)*pow(x[i], 3) + 7.5*c4*pow(hubble[i], 6)*pow(x[i], 4) - 9*c5*pow(hubble[i], 8)*pow(x[i], 5) - cG*pow(hubble[i], 4)*pow(x[i], 2);
+    double omega = 2*c3*pow(hubble[i], 4)*pow(x[i], 2) - 12*c4*pow(hubble[i], 6)*pow(x[i], 3) + 15*c5*pow(hubble[i], 8)*pow(x[i], 4) + 4*cG*pow(hubble[i], 4)*x[i];
+	
+    double x_prime = -x[i]+(alpha*lambda-sigma*gamma)/(sigma*beta-alpha*omega);
+    double h_prime = (omega*gamma-lambda*beta)/(sigma*beta-alpha*omega);
+
+    double rho = c2/2*pow(hubble[i], 2)*pow(x[i], 2) - 6*c3*pow(hubble[i], 4)*pow(x[i], 3) + 22.5*c4*pow(hubble[i], 6)*pow(x[i], 4) - 21*c5*pow(hubble[i], 8)*pow(x[i], 5) - 9*cG*pow(hubble[i], 4)*pow(x[i], 2);
+    double p = c2/2*pow(hubble[i], 2)*pow(x[i], 2) + 2*c3*pow(hubble[i], 3)*pow(x[i], 2)*(h_prime*x[i]+x_prime*hubble[i]) - c4*(4.5*pow(hubble[i], 6)*pow(x[i], 4) + 12*pow(hubble[i], 6)*pow(x[i], 3)*x_prime + 15*pow(hubble[i], 5)*pow(x[i], 4)*h_prime) + 3*c5*pow(hubble[i], 7)*pow(x[i], 4)*(5*hubble[i]*x_prime+7*h_prime*x[i]+2*hubble[i]*x[i]) + cG*(6*pow(hubble[i], 3)*pow(x[i], 2)*h_prime + 4*pow(hubble[i], 4)*x[i]*x_prime + 3*pow(hubble[i], 4)*pow(x[i], 2));
+    double w = p/rho;
+    // double ct = ct_(&(intvar[i]));
+    // double ct = sqrt((0.5 + 0.25*c4*prod4 + 1.5*c5*prod4*h*(h*x_prime+h_prime*xgal) - 0.5*cG*prod2)/(0.5 - 0.75*c4*prod4 + 1.5*c5*prod5*h + 0.5*cG*prod2));
+
+    // fprintf(f, "%.16f\t%.16f\t%.16f\t%.16f\n", intvar[i], hubble[i], x[i], ct);
+  }
+
+  fclose(f);
+
+}
+
+
+
 int test(){
 
   fflush(stdout);
@@ -1217,15 +1315,15 @@ int test(){
   // orad = 8.063127541638e-5;
   // orad = 8e-5;
   // orad = 2.469e-5/(0.736*0.736)*(1+0.2271*3.046);
-  orad = 8.6e-5;
+  // orad = 8.6e-5;
 
-  // Test
-  om = 0.343371;
-  h0 = 60.*1000/(2.99792458e8);
-  c2 = -7.849576;
-  c3 = -2.943283;
-  c4 = -0.805668;
-  cG = -0.041145;
+  // // Test
+  // om = 0.343371;
+  // h0 = 60.*1000/(2.99792458e8);
+  // c2 = -7.849576;
+  // c3 = -2.943283;
+  // c4 = -0.805668;
+  // cG = -0.041145;
 
   // // Scenario 1
   // om = 0.279;
@@ -1251,30 +1349,55 @@ int test(){
   // c4 = -0.61;
   // cG = 0.15;
 
-  // Scenario 4
-  om = 0.275;
-  h0 = 72.7*1000/(2.99792458e8);
-  c2 = -4.1;
-  c3 = -3.375;
-  c4 = -0.775;
-  cG = 0.;
+  // // Scenario 4
+  // om = 0.275;
+  // h0 = 72.7*1000/(2.99792458e8);
+  // c2 = -4.1;
+  // c3 = -3.375;
+  // c4 = -0.775;
+  // cG = 0.;
 
-  double grhormass[] = {0,0,0,0,0};
-  double nu_masses[] = {0,0,0,0,0};
-  int nu_mass_eigenstates = 0;
-  double a1 = 0.1;
-  double a2 = 0.01;
-  double a3 = 0.001;
-  double a4 = 0.0001;
-  double a5 = 0.00001;
+  // Background test
+  
+
+  double obh2 = 0.0221743;
+  double och2 = 0.1177806;
+  double h = 78.072270;
+  h0 = h*1000/(2.99792458e8);
+  c2 = -8.4381790;
+  c3 = -3.3665550;
+  c4 = -1.0341100;
+  cG = 0.001188243;
+  double amin = 1.0/(1.0+0.009787);
+  om = 10000*(obh2+och2)/(h*h);
+  double zeta3 = 1.2020569031595942853997;
+  double G = 6.6738e-11;
+  double c = 2.99792458e8;
+  double sigma_boltz = 5.6704e-8;
+  double Mpc = 3.085678e22;
+  double tcmb = 2.7255;
+  double kappa = 8*M_PI*G;
+  double grhog = kappa/(c*c)*4*sigma_boltz/(c*c*c)*pow(tcmb, 4)*Mpc*Mpc; // photon energy density
+  double grhor = 7.0/8.0*pow(4.0/11.0, 4.0/3.0)*grhog; // density of one species of neutrinos
+  double grhom = 3*pow(h0, 2); // critical density
+  double omnh2 = 0.00064; // Omeganuh2
+  orad = (grhog+3.046*2.0/3.0*grhor)/grhom; //OmegaR0
+  // printf("%.16e\t%.16f\t%.16e\t%.16f\t%.16f\n", grhor, zeta3, omnh2*10000/(h0*h0), 3.046/3.0, nu_mass);
+
+
+  double grhormass[] = {3.046/3.0*grhor,0,0,0,0};
+  double nu_masses[] = {21.0*pow(M_PI, 4)*grhom*omnh2*10000/(3.046*180.0*zeta3*grhor*h*h),0,0,0,0};
+  int nu_mass_eigenstates = 1;
 
   arrays_(&orad, &om, &h0, &c2, &c3, &c4, &cG, grhormass, nu_masses, &nu_mass_eigenstates);
 
-  const double y1[] = {GetH_(&a1), GetX_(&a1), 0};
-  const double y2[] = {GetH_(&a1), GetX_(&a1), 0};
-  const double y3[] = {GetH_(&a1), GetX_(&a1), 0};
-  const double y4[] = {GetH_(&a1), GetX_(&a1), 0};
-  const double y5[] = {GetH_(&a1), GetX_(&a1), 0};
+  background("bg_test.dat", amin, 2999);
+
+  // const double y1[] = {GetH_(&a1), GetX_(&a1), 0};
+  // const double y2[] = {GetH_(&a1), GetX_(&a1), 0};
+  // const double y3[] = {GetH_(&a1), GetX_(&a1), 0};
+  // const double y4[] = {GetH_(&a1), GetX_(&a1), 0};
+  // const double y5[] = {GetH_(&a1), GetX_(&a1), 0};
 
   // calcPertOmC2C3C4C5CGC0(a1, y1);
   // calcPertOmC2C3C4C5CGC0(a2, y2);

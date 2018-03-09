@@ -23,14 +23,18 @@ module interface
       real(kind=C_DOUBLE) :: point, GetH
     end function GetH
 
-    subroutine GetdHdX(point, hcamb, xcamb, dh, dx) bind(C, name='GetdHdX_')
-      import C_PTR, C_DOUBLE
+    subroutine GetdHdX(point, hcamb, xcamb, dh, dx, grhormass, nu_masses, nu_mass_eigenstates) bind(C, name='GetdHdX_')
+      import C_PTR, C_DOUBLE, C_INT
       real(kind=C_DOUBLE) :: point, hcamb, xcamb, dh, dx
+      integer(C_INT) :: nu_mass_eigenstates
+      type(C_PTR), value :: grhormass, nu_masses
     end subroutine GetdHdX
 
-    function ct(point) bind(C, name='ct_')
-      import C_DOUBLE
+    function ct(point, grhormass, nu_masses, nu_mass_eigenstates) bind(C, name='ct_')
+      import C_DOUBLE, C_PTR, C_INT
       real(kind=C_DOUBLE) :: point, ct
+      integer(C_INT) :: nu_mass_eigenstates
+      type(C_PTR), value :: grhormass, nu_masses
     end function ct
 
     function grhogal(point, hcamb, xcamb) bind(C, name='grhogal_')
@@ -67,10 +71,12 @@ module interface
       real(kind=C_DOUBLE) :: dgrho, dgq, eta, dphi, dphiprime, k, dphisecond, deltafprime
     end function dphisecond
 
-    function pigalprime(point, hcamb, xcamb, dhcamb, dxcamb, dgrho, dgq, dgpi, pidot, eta, dphi, dphiprime, k, grho, gpres) bind(C, name='pigalprime_')
-      import C_DOUBLE
+    function pigalprime(point, hcamb, xcamb, dhcamb, dxcamb, dgrho, dgq, dgpi, pidot, eta, dphi, dphiprime, k, grho, gpres, grhormass, nu_masses, nu_mass_eigenstates) bind(C, name='pigalprime_')
+      import C_DOUBLE, C_INT, C_PTR
       real(kind=C_DOUBLE) :: point, hcamb, xcamb, dhcamb, dxcamb
       real(kind=C_DOUBLE) :: dgrho, dgq, dgpi, pidot, eta, dphi, dphiprime, k, grho, gpres, pigalprime
+      integer(C_INT) :: nu_mass_eigenstates
+      type(C_PTR), value :: grhormass, nu_masses
     end function pigalprime
 
     function crosschecks(point, hcamb, xcamb, dhcamb, dxcamb, dgrho, dgq, dgpi, eta, dphi, dphiprime, dphiprimeprime, k, grho, gpres, deltafprime) bind(C, name='crosschecks_')

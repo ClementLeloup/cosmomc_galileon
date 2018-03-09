@@ -951,63 +951,66 @@
     ind=1
 
     !!Example code for plotting out variable evolution
-    if (fixq/=0._dl) then
-        tol1=tol/exp(AccuracyBoost-1)
-        !call CreateTxtFile('evolve_test.txt',1)
-        do j=1,1000
-            tauend = taustart+(j-1)*(CP%tau0-taustart)/1000
-            print *, tau, y(1)
-            call GaugeInterface_EvolveScal(EV,tau,y,tauend,tol1,ind,c,w)
-            !print *, "2"
-            yprime = 0
-            call derivs(EV,EV%ScalEqsToPropagate,tau,y,yprime)
-            !print *, "3"
-            adotoa = 1/(y(1)*dtauda(y(1)))
-            ddelta= (yprime(3)*grhoc+yprime(4)*grhob)/(grhob+grhoc)
-            delta=(grhoc*y(3)+grhob*y(4))/(grhob+grhoc)
-            growth= ddelta/delta/adotoa
-
-            !Modified by Clement Leloup
-            a = y(1)   
-            dgrho = grhob/y(1)*y(4) + grhoc/y(1)*y(3) + grhornomass/(y(1)*y(1))*y(EV%r_ix) + grhog/(y(1)*y(1))*y(EV%g_ix)
-            dgq = grhob/y(1)*y(5) + grhornomass/(y(1)*y(1))*y(EV%r_ix+1) + grhog/(y(1)*y(1))*y(EV%g_ix+1)
-            dgpi = grhornomass/(y(1)*y(1))*y(EV%r_ix+2) + grhog/(y(1)*y(1))*y(EV%g_ix+2)
-            if (CP%use_galileon) then
-               xgal = GetX(a)
-               hub = GetH(a)
-               !print *, "4"
-               call GetdHdX(a, hub, xgal, dh, dx)
-               !print *, "5"
-               grho = (grhob/y(1)+grhoc/y(1)+grhornomass/(y(1)*y(1))+grhog/(y(1)*y(1))+grhogal(a, hub, xgal))
-               gpres=(grhog/(y(1)*y(1))+grhor/(y(1)*y(1)))/3+gpresgal(a, hub, xgal, dh, dx)
-
-               dgrhogal = Chigal(a, hub, xgal, dgrho, y(2), y(EV%w_ix), y(EV%w_ix+1), EV%q)
-               dgrho = dgrho + dgrhogal
-               dgqgal = qgal(a, hub, xgal, dgq, y(2), y(EV%w_ix), y(EV%w_ix+1), EV%q)
-               dgq = dgq + dgqgal
-               dgpigal = Pigal(a, hub, xgal, dh, dx, dgrho, dgq, dgpi, y(2), y(EV%w_ix), EV%q)
-               dgpi = dgpi + dgpigal
-               deltagal = 0
-               if (y(1) .ge. 9.99999d-7) then
-                  !deltagal = dgrhogal/grhogal(y(1))
-                  !deltagal = (dgrho - grhornomass/(y(1)*y(1))*y(EV%r_ix) - grhog/(y(1)*y(1))*y(EV%g_ix))/(grhob/y(1)+grhoc/y(1)+grhogal(y(1)))
-                  deltagal = dgrho/grho
-               end if
-
-            end if
-
-            phi = -(dgrho + 3*dgq*adotoa/(EV%q))/((EV%q2)*2) - dgpi/(EV%q2)/2
-
-            !Modified by Clement Leloup
-            !if (CP%use_galileon) then
-            !   write (1,'(12E15.5)') tau, y(EV%w_ix), grhogal(a, hub, xgal), dgrhogal, deltagal, dgrho/((EV%q2)*2), 3*dgq*adotoa/(EV%q)/((EV%q2)*2), dgpi/(EV%q2)/2, phi, a, y(EV%w_ix+1), yprime(EV%w_ix+1)
-            !else
-            !   write (1,'(7E15.5)') tau, delta, growth, y(3), y(4), y(EV%g_ix), y(1)
-            !end if
-        end do
-        !close(1)
-        stop
-    end if
+!!$    if (fixq/=0._dl) then
+!!$        tol1=tol/exp(AccuracyBoost-1)
+!!$        !call CreateTxtFile('evolve_test.txt',1)
+!!$        do j=1,1000
+!!$            tauend = taustart+(j-1)*(CP%tau0-taustart)/1000
+!!$            !print *, tau, y(1)
+!!$            call GaugeInterface_EvolveScal(EV,tau,y,tauend,tol1,ind,c,w)
+!!$            !print *, "2"
+!!$            yprime = 0
+!!$            call derivs(EV,EV%ScalEqsToPropagate,tau,y,yprime)
+!!$            !print *, "3"
+!!$            adotoa = 1/(y(1)*dtauda(y(1)))
+!!$            ddelta= (yprime(3)*grhoc+yprime(4)*grhob)/(grhob+grhoc)
+!!$            delta=(grhoc*y(3)+grhob*y(4))/(grhob+grhoc)
+!!$            growth= ddelta/delta/adotoa
+!!$
+!!$            !Modified by Clement Leloup
+!!$            a = y(1)   
+!!$            dgrho = grhob/y(1)*y(4) + grhoc/y(1)*y(3) + grhornomass/(y(1)*y(1))*y(EV%r_ix) + grhog/(y(1)*y(1))*y(EV%g_ix)
+!!$            dgq = grhob/y(1)*y(5) + grhornomass/(y(1)*y(1))*y(EV%r_ix+1) + grhog/(y(1)*y(1))*y(EV%g_ix+1)
+!!$            dgpi = grhornomass/(y(1)*y(1))*y(EV%r_ix+2) + grhog/(y(1)*y(1))*y(EV%g_ix+2)
+!!$            if (CP%use_galileon) then
+!!$               xgal = GetX(a)
+!!$               hub = GetH(a)
+!!$               !print *, "4"
+!!$               call GetdHdX(a, hub, xgal, dh, dx)
+!!$               !print *, "5"
+!!$               grho = (grhob/y(1)+grhoc/y(1)+grhornomass/(y(1)*y(1))+grhog/(y(1)*y(1))+grhogal(a, hub, xgal))
+!!$               gpres=(grhog/(y(1)*y(1))+grhor/(y(1)*y(1)))/3+gpresgal(a, hub, xgal, dh, dx)
+!!$
+!!$               dgrhogal = Chigal(a, hub, xgal, dgrho, y(2), y(EV%w_ix), y(EV%w_ix+1), EV%q)
+!!$               dgrho = dgrho + dgrhogal
+!!$               dgqgal = qgal(a, hub, xgal, dgq, y(2), y(EV%w_ix), y(EV%w_ix+1), EV%q)
+!!$               dgq = dgq + dgqgal
+!!$               dgpigal = Pigal(a, hub, xgal, dh, dx, dgrho, dgq, dgpi, y(2), y(EV%w_ix), EV%q)
+!!$               dgpi = dgpi + dgpigal
+!!$               deltagal = 0
+!!$               if (y(1) .ge. 9.99999d-7) then
+!!$                  !deltagal = dgrhogal/grhogal(y(1))
+!!$                  !deltagal = (dgrho - grhornomass/(y(1)*y(1))*y(EV%r_ix) - grhog/(y(1)*y(1))*y(EV%g_ix))/(grhob/y(1)+grhoc/y(1)+grhogal(y(1)))
+!!$                  deltagal = dgrho/grho
+!!$               end if
+!!$
+!!$            end if
+!!$
+!!$            phi = -(dgrho + 3*dgq*adotoa/(EV%q))/((EV%q2)*2) - dgpi/(EV%q2)/2
+!!$
+!!$            !Modified by Clement Leloup
+!!$            !if (CP%use_galileon) then
+!!$            !   write (1,'(12E15.5)') tau, y(EV%w_ix), grhogal(a, hub, xgal), dgrhogal, deltagal, dgrho/((EV%q2)*2), 3*dgq*adotoa/(EV%q)/((EV%q2)*2), dgpi/(EV%q2)/2, phi, a, y(EV%w_ix+1), yprime(EV%w_ix+1)
+!!$            !else
+!!$            !   write (1,'(7E15.5)') tau, delta, growth, y(3), y(4), y(EV%g_ix), y(1)
+!!$            !end if
+!!$        end do
+!!$        !close(1)
+!!$
+!!$        print *, GW_light_dt(9.787d-3)
+!!$
+!!$        stop
+!!$    end if
 
     !     Begin timestep loop.
 
