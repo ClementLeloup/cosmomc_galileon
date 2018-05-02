@@ -1,4 +1,3 @@
-
 #Files containing evolution equations initial power spectrum module
 ##Modified by Clement Leloup
 ##EQUATIONS     ?= equations
@@ -135,7 +134,7 @@ camb_fits: directories writefits.f90 $(CAMBOBJ) $(DRIVER)
 	$(F90C) $(F90FLAGS) -I$(HEALPIXDIR)/include $(CAMBOBJ) writefits.f90 $(DRIVER) $(HEALPIXLD) -DWRITE_FITS -o $@
 
 $(DLL_DIR)/%.o: %.f90
-	$(F90C) $(SF90FLAGS) -lstdc++ -lgsl -lgslcblas -c $*.f90 -o $(DLL_DIR)/$*.o
+	$(F90C) $(SF90FLAGS) -L/usr/lib64 -lstdc++ -lgsl -lgslcblas -c $*.f90 -o $(DLL_DIR)/$*.o
 
 $(DLL_DIR)/%.o: %.F90
 	$(F90C) $(SF90FLAGS) -c $*.F90 -o $(DLL_DIR)/$*.o

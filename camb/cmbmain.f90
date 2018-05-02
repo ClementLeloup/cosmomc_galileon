@@ -117,6 +117,7 @@
     !Modified by Clement Leloup
     real(dl) :: fixq = 0._dl !Debug output of one q
     !real(dl) :: fixq = 0.01_dl !Debug output of one q
+    !real(dl) :: fixq = 3.542271961087582E-006
 
     real(dl) :: ALens = 1._dl
 
@@ -951,24 +952,24 @@
     ind=1
 
     !!Example code for plotting out variable evolution
-!!$    if (fixq/=0._dl) then
-!!$        tol1=tol/exp(AccuracyBoost-1)
-!!$        !call CreateTxtFile('evolve_test.txt',1)
-!!$        do j=1,1000
-!!$            tauend = taustart+(j-1)*(CP%tau0-taustart)/1000
-!!$            !print *, tau, y(1)
-!!$            call GaugeInterface_EvolveScal(EV,tau,y,tauend,tol1,ind,c,w)
-!!$            !print *, "2"
-!!$            yprime = 0
-!!$            call derivs(EV,EV%ScalEqsToPropagate,tau,y,yprime)
-!!$            !print *, "3"
-!!$            adotoa = 1/(y(1)*dtauda(y(1)))
-!!$            ddelta= (yprime(3)*grhoc+yprime(4)*grhob)/(grhob+grhoc)
-!!$            delta=(grhoc*y(3)+grhob*y(4))/(grhob+grhoc)
-!!$            growth= ddelta/delta/adotoa
-!!$
-!!$            !Modified by Clement Leloup
-!!$            a = y(1)   
+    if (fixq/=0._dl) then
+        tol1=tol/exp(AccuracyBoost-1)
+        !call CreateTxtFile('evolve_test.txt',1)
+        do j=1,1000
+            tauend = taustart+(j-1)*(CP%tau0-taustart)/1000
+            !print *, tau, y(1)
+            call GaugeInterface_EvolveScal(EV,tau,y,tauend,tol1,ind,c,w)
+            !print *, "2"
+            yprime = 0
+            call derivs(EV,EV%ScalEqsToPropagate,tau,y,yprime)
+            !print *, "3"
+            adotoa = 1/(y(1)*dtauda(y(1)))
+            ddelta= (yprime(3)*grhoc+yprime(4)*grhob)/(grhob+grhoc)
+            delta=(grhoc*y(3)+grhob*y(4))/(grhob+grhoc)
+            growth= ddelta/delta/adotoa
+
+            !Modified by Clement Leloup
+            a = y(1)   
 !!$            dgrho = grhob/y(1)*y(4) + grhoc/y(1)*y(3) + grhornomass/(y(1)*y(1))*y(EV%r_ix) + grhog/(y(1)*y(1))*y(EV%g_ix)
 !!$            dgq = grhob/y(1)*y(5) + grhornomass/(y(1)*y(1))*y(EV%r_ix+1) + grhog/(y(1)*y(1))*y(EV%g_ix+1)
 !!$            dgpi = grhornomass/(y(1)*y(1))*y(EV%r_ix+2) + grhog/(y(1)*y(1))*y(EV%g_ix+2)
@@ -1004,13 +1005,13 @@
 !!$            !else
 !!$            !   write (1,'(7E15.5)') tau, delta, growth, y(3), y(4), y(EV%g_ix), y(1)
 !!$            !end if
-!!$        end do
+        end do
 !!$        !close(1)
 !!$
 !!$        print *, GW_light_dt(9.787d-3)
 !!$
-!!$        stop
-!!$    end if
+        stop
+    end if
 
     !     Begin timestep loop.
 

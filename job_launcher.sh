@@ -427,8 +427,8 @@ then
 	    then
 			echo "Error : Some parameters are missing !" >&2
 	    else
-		echo "qsub -cwd -b y -P P_$project -l sps=1 -l ct=$ct_loc -l h_rt=$h_rt_loc -l s_rss=$s_rss_loc -l fsize=$fsize_loc -N $name -o $DIR/$path -e $DIR/$path -pe multicores $nb_core -q $q_name $DIR/cosmomc.sh $DIR/$cosmomc_input"
-		qsub -cwd -b y -P P_$project -l sps=1 -l ct=$ct_loc -l h_rt=$h_rt_loc -l s_rss=$s_rss_loc -l fsize=$fsize_loc -N $name -o $DIR/$path -e $DIR/$path -pe multicores $nb_core -q $q_name $DIR/cosmomc.sh $DIR/$cosmomc_input $mpi_env
+		echo "qsub -cwd -b y -P P_$project -l os=sl6 -l sps=1 -l ct=$ct_loc -l h_rt=$h_rt_loc -l s_rss=$s_rss_loc -l fsize=$fsize_loc -N $name -o $DIR/$path -e $DIR/$path -pe multicores $nb_core -q $q_name $DIR/cosmomc.sh $DIR/$cosmomc_input"
+		qsub -cwd -b y -P P_$project -l os=sl6 -l sps=1 -l ct=$ct_loc -l h_rt=$h_rt_loc -l s_rss=$s_rss_loc -l fsize=$fsize_loc -N $name -o $DIR/$path -e $DIR/$path -pe multicores $nb_core -q $q_name $DIR/cosmomc.sh $DIR/$cosmomc_input $mpi_env
 	    fi
 	    ;;
 	"Parallel")

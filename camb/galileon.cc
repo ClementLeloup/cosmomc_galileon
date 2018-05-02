@@ -90,6 +90,7 @@ double q = 0;
 double noghost_previous = 0;
 double cs2_previous = 0;
 int tracker = 0;
+// int tracker = 1;
 
 // External functions from fortran
 extern"C" void massivenu_mp_nu_rho_(double* am, double* rhonu);
@@ -217,7 +218,7 @@ int calcPertOmC2C3C4C5CGC0(double a, const double y[3], double* grhormass, doubl
     }
   }
   if(cs2<0){
-    fprintf(stderr, "Error : complex sound speed : a = %.12f \t cs2 = %.12f\n", a, cs2);
+    fprintf(stderr, "Error : complex sound speed : a = %.12f \t cs2 = %.12f \t h = %.12f \t x = %12f\n", a, cs2, h, xgal);
     return 2;
   }
   if(noghostt < 0){
@@ -453,7 +454,7 @@ int calcHubbleGalileon(double* intvar, double* xgalileon, double* hubble, double
   \param[out] table of h 
   \param[out] table of x
 */
-void calcHubbleTracker(double* intvar, double* xgalileon, double* hubble){
+int calcHubbleTracker(double* intvar, double* xgalileon, double* hubble, double* grhormass, double* nu_masses, int* nu_mass_eigenstates){
 
   fflush(stdout);
  
@@ -462,15 +463,37 @@ void calcHubbleTracker(double* intvar, double* xgalileon, double* hubble){
   //   return ;
   // }
 
-  double op = (c2/2.0 - 6.0*c3 + 22.5*c4 - 21.0*c5 - 9*cG )/3.0; //Omega_phi
+  // double op = c2/6.0 - 2.0*c3 + 7.5*c4 - 7.0*c5 - 3.0*cG; //Omega_phi
+  double op = c2/6.0 - 2.0*c3 + 7.5*c4 - 7.0*c5; //Omega_phi+3*cG
 
   // int nstep = intvar.size();
   int nstep = nb+1;
   for(int i = 0; i < nstep; ++i){
    double a2 = intvar[i]*intvar[i];
-    hubble[i] = sqrt(0.5*(om/(a2*intvar[i])+orad/(a2*a2)-3*cG)+sqrt(op/9+3*cG+0.25*pow(3*cG-om/(a2*intvar[i])-orad/(a2*a2),2))); // Analytical solution for H
-    xgalileon[i] = intvar[i]/(hubble[i]*hubble[i]); // since for tracker, h^2*x = 1
+   double omega = om/(a2*intvar[i])+orad/(a2*a2);
+
+   // Contribution from massive neutrinos
+   if((*nu_mass_eigenstates)>0){
+     for(int j=0; j<(*nu_mass_eigenstates); j++){
+       double rhonu = 0;
+       double am = intvar[i]*nu_masses[j];
+       massivenu_mp_nu_rho_(&am, &rhonu);
+       omega += grhormass[j]*rhonu/(a2*a2*3.*pow(h0, 2));
+     }
+   }
+   
+   hubble[i] = sqrt(0.5*(omega-3*cG+sqrt(4*op+12*cG+pow(3*cG-omega,2)))); // Analytical solution for H
+   xgalileon[i] = 1.0/(intvar[i]*hubble[i]*hubble[i]); // since for tracker, h^2*x = 1
+   
+   // printf("%.12f \t %.12f \t %.12f \t %.12f \n", hubble[i], xgalileon[i], omega, op-3.0*cG);
+
+   double y[]={hubble[i], xgalileon[i], 0};
+   int testPert = calcPertOmC2C3C4C5CGC0(intvar[i], y, grhormass, nu_masses, nu_mass_eigenstates);
+   if(testPert != 0) return 7;
+
   }
+
+  return 0;
 
 }
 
@@ -536,21 +559,42 @@ extern "C" int arrays_(double* omegar, double* omegam, double* H0in, double* c2i
     c5 = 0;
   } else{
     c3 = (*c3in);
-    c4 = (*c4in);
-    c5 = (-1. + om + orad + c2/6. - 2*c3 + 7.5*c4 - 3*cG)/7.;
 
-    // Add massive neutrinos
-    double rhonu = 0;
-    double pnu = 0;
-    double grhom = 3*pow(h0, 2); // critical density
-    if((*nu_mass_eigenstates)>0){
-      for(int i = 0; i<(*nu_mass_eigenstates); i++){
-	// massivenu_mp_nu_rho_(&(nu_masses[i]), &rhonu);
-	massivenu_mp_nu_background_(&(nu_masses[i]), &rhonu, &pnu);
-	// printf("i : nu_masses = %.18f\tgrhormass = %.18e\trhonu = %.18f\tgrhom = %.18f\ttest1 = %.18f\ttest2 = %.18f\ttest3 = %.18f\tc5 = %.18f\n", nu_masses[i], grhormass[i], rhonu, grhom, om + orad, c2/6., - 2*c3 + 7.5*c4 - 3*cG, c5);
-	c5 += rhonu*grhormass[i]/(7.*grhom);
-	// printf("nu_mass = %.16f\trhonu = %.16f\tpnu = %.16f\tgrhormass = %.16f\tgrhom = %.16f\n", nu_masses[i], rhonu, pnu, grhormass[i], grhom);
-	// printf("Omeganu of mass eigenstate %d = %.16f\n", i, rhonu*grhormass[i]/grhom);
+    if(tracker){
+      c4 = (-3.0*c2 + 8.0*c3 - 2.0*cG + 10.0*(-1. + om + orad))/9.0;
+      c5 = (-c2 + 2.0*c3 - 2.0*cG + 4.0*(-1. + om + orad))/3.0;
+      // Add massive neutrinos
+      double rhonu = 0;
+      double pnu = 0;
+      double grhom = 3*pow(h0, 2); // critical density
+      if((*nu_mass_eigenstates)>0){
+	for(int i = 0; i<(*nu_mass_eigenstates); i++){
+	  // massivenu_mp_nu_rho_(&(nu_masses[i]), &rhonu);
+	  massivenu_mp_nu_background_(&(nu_masses[i]), &rhonu, &pnu);
+	  // printf("i : nu_masses = %.18f\tgrhormass = %.18e\trhonu = %.18f\tgrhom = %.18f\ttest1 = %.18f\ttest2 = %.18f\ttest3 = %.18f\tc5 = %.18f\n", nu_masses[i], grhormass[i], rhonu, grhom, om + orad, c2/6., - 2*c3 + 7.5*c4 - 3*cG, c5);
+	  c4 += 10.0*rhonu*grhormass[i]/(9.0*grhom);
+	  c5 += 4.0*rhonu*grhormass[i]/(3.0*grhom);
+	  // printf("nu_mass = %.16f\trhonu = %.16f\tpnu = %.16f\tgrhormass = %.16f\tgrhom = %.16f\n", nu_masses[i], rhonu, pnu, grhormass[i], grhom);
+	  // printf("Omeganu of mass eigenstate %d = %.16f\n", i, rhonu*grhormass[i]/grhom);
+	}
+      }      
+    }else{
+      c4 = (*c4in);
+      c5 = (-1. + om + orad + c2/6. - 2*c3 + 7.5*c4 - 3*cG)/7.;
+
+      // Add massive neutrinos
+      double rhonu = 0;
+      double pnu = 0;
+      double grhom = 3*pow(h0, 2); // critical density
+      if((*nu_mass_eigenstates)>0){
+	for(int i = 0; i<(*nu_mass_eigenstates); i++){
+	  // massivenu_mp_nu_rho_(&(nu_masses[i]), &rhonu);
+	  massivenu_mp_nu_background_(&(nu_masses[i]), &rhonu, &pnu);
+	  // printf("i : nu_masses = %.18f\tgrhormass = %.18e\trhonu = %.18f\tgrhom = %.18f\ttest1 = %.18f\ttest2 = %.18f\ttest3 = %.18f\tc5 = %.18f\n", nu_masses[i], grhormass[i], rhonu, grhom, om + orad, c2/6., - 2*c3 + 7.5*c4 - 3*cG, c5);
+	  c5 += rhonu*grhormass[i]/(7.*grhom);
+	  // printf("nu_mass = %.16f\trhonu = %.16f\tpnu = %.16f\tgrhormass = %.16f\tgrhom = %.16f\n", nu_masses[i], rhonu, pnu, grhormass[i], grhom);
+	  // printf("Omeganu of mass eigenstate %d = %.16f\n", i, rhonu*grhormass[i]/grhom);
+	}
       }
     }
   }
@@ -588,12 +632,11 @@ extern "C" int arrays_(double* omegar, double* omegam, double* H0in, double* c2i
   // xgalileon.resize(intvar.size(), 999999);
 
   // Integrate and fill hubble and x both when tracker and not tracker
-  if(!tracker)
-    {
-      status = calcHubbleGalileon(intvar, xgalileon, hubble, grhormass, nu_masses, nu_mass_eigenstates);
-    }
+  if(!tracker) {
+    status = calcHubbleGalileon(intvar, xgalileon, hubble, grhormass, nu_masses, nu_mass_eigenstates);
+  }
   else {
-    calcHubbleTracker(intvar, xgalileon, hubble);
+    status = calcHubbleTracker(intvar, xgalileon, hubble, grhormass, nu_masses, nu_mass_eigenstates);
   }
 
   printf("status = %i\n", status);
@@ -620,20 +663,25 @@ extern "C" int arrays_(double* omegar, double* omegam, double* H0in, double* c2i
   //   double p = c2/2*pow(hubble[i], 2)*pow(intvar[i+1]*x[i], 2) + 2*c3*pow(hubble[i], 3)*pow(intvar[i+1]*x[i], 2)*(h_prime*intvar[i+1]*x[i]+x_prime*hubble[i]) - c4*(4.5*pow(hubble[i], 6)*pow(intvar[i+1]*x[i], 4) + 12*pow(hubble[i], 6)*pow(intvar[i+1]*x[i], 3)*x_prime + 15*pow(hubble[i], 5)*pow(intvar[i+1]*x[i], 4)*h_prime) + 3*c5*pow(hubble[i], 7)*pow(intvar[i+1]*x[i], 4)*(5*hubble[i]*x_prime+7*h_prime*intvar[i+1]*x[i]+2*hubble[i]*intvar[i+1]*x[i]) + cG*(6*pow(hubble[i], 3)*pow(intvar[i+1]*x[i], 2)*h_prime + 4*pow(hubble[i], 4)*intvar[i+1]*x[i]*x_prime + 3*pow(hubble[i], 4)*pow(intvar[i+1]*x[i], 2));
   // }
 
-  spline_h = gsl_spline_alloc(gsl_interp_cspline, nb+1);
-  spline_x = gsl_spline_alloc(gsl_interp_cspline, nb+1);
-  double intvar_interp[nb+1];
-  double hubble_interp[nb+1];
-  double xgalileon_interp[nb+1];
+  spline_h = gsl_spline_alloc(gsl_interp_cspline, nb+2);
+  spline_x = gsl_spline_alloc(gsl_interp_cspline, nb+2);
+  double intvar_interp[nb+2];
+  double hubble_interp[nb+2];
+  double xgalileon_interp[nb+2];
   for(int i = 0; i<=nb; i++){
     intvar_interp[i] = intvar[nb-i];
     hubble_interp[i] = hubble[nb-i];
     xgalileon_interp[i] = xgalileon[nb-i];
   }
-  gsl_spline_init(spline_h, intvar_interp, hubble_interp, nb+1);
-  gsl_spline_init(spline_x, intvar_interp, xgalileon_interp, nb+1);
 
-  // background("bg_test.dat", 1.0/(1.0+0.009787), 2999);
+  intvar_interp[nb+1] = 1./q;
+  hubble_interp[nb+1] = (hubble_interp[nb]-hubble_interp[nb-1])/(intvar_interp[nb]-intvar_interp[nb-1])*(intvar_interp[nb+1]-intvar_interp[nb-1]) + hubble_interp[nb-1];
+  xgalileon_interp[nb+1] = (xgalileon_interp[nb]-xgalileon_interp[nb-1])/(intvar_interp[nb]-intvar_interp[nb-1])*(intvar_interp[nb+1]-intvar_interp[nb-1]) + xgalileon_interp[nb-1];
+
+  gsl_spline_init(spline_h, intvar_interp, hubble_interp, nb+2);
+  gsl_spline_init(spline_x, intvar_interp, xgalileon_interp, nb+2);
+
+  // background("bestfit_TTTEEE_lensing_tracker_background_bis.dat", amin, 29999);
 
   return status;
   
@@ -654,14 +702,14 @@ extern "C" double GetX_(double* point){
 
   double xgal = 0;
   
-  if(!tracker){
+  // if(!tracker){
     xgal = (*point)*gsl_spline_eval(spline_x, *point, acc);
-  } else{
-    double a2 = (*point)*(*point);
-    double op = (c2/2.0 - 6.0*c3 + 22.5*c4 - 21.0*c5 - 9*cG )/3.0;
-    double hbar = sqrt(0.5*(om/(a2*(*point))+orad/(a2*a2)-3*cG)+sqrt(op/9+3*cG+0.25*pow(3*cG-om/(a2*(*point))-orad/(a2*a2),2)));
-    xgal = (*point)/(hbar*hbar);
-  }
+  // } else{
+  //   double a2 = (*point)*(*point);
+  //   double op = (c2/2.0 - 6.0*c3 + 22.5*c4 - 21.0*c5 - 9*cG )/3.0;
+  //   double hbar = sqrt(0.5*(om/(a2*(*point))+orad/(a2*a2)-3*cG)+sqrt(op/9+3*cG+0.25*pow(3*cG-om/(a2*(*point))-orad/(a2*a2),2)));
+  //   xgal = (*point)/(hbar*hbar);
+  // }
 
   return xgal;
 
@@ -682,13 +730,13 @@ extern "C" double GetH_(double* point){
 
   double hbar = 0;
 
-  if(!tracker){
+  // if(!tracker){
     hbar = gsl_spline_eval(spline_h, *point, acc);
-  } else{
-    double a2 =(*point)*(*point);
-    double op = (c2/2.0 - 6.0*c3 + 22.5*c4 - 21.0*c5 - 9*cG )/3.0;
-    hbar = sqrt(0.5*(om/(a2*(*point))+orad/(a2*a2)-3*cG)+sqrt(op/9+3*cG+0.25*pow(3*cG-om/(a2*(*point))-orad/(a2*a2),2)));
-  }
+  // } else{
+  //   double a2 =(*point)*(*point);
+  //   double op = (c2/2.0 - 6.0*c3 + 22.5*c4 - 21.0*c5 - 9*cG )/3.0;
+  //   hbar = sqrt(0.5*(om/(a2*(*point))+orad/(a2*a2)-3*cG)+sqrt(op/9+3*cG+0.25*pow(3*cG-om/(a2*(*point))-orad/(a2*a2),2)));
+  // }
 
   return hbar;
 
@@ -1299,7 +1347,7 @@ void background(char* outfile, double amin, int n){
     // double ct = ct_(&(intvar[i]));
     // double ct = sqrt((0.5 + 0.25*c4*prod4 + 1.5*c5*prod4*h*(h*x_prime+h_prime*xgal) - 0.5*cG*prod2)/(0.5 - 0.75*c4*prod4 + 1.5*c5*prod5*h + 0.5*cG*prod2));
 
-    // fprintf(f, "%.16f\t%.16f\t%.16f\t%.16f\n", intvar[i], hubble[i], x[i], ct);
+    fprintf(f, "%.16f\t%.16f\t%.16f\t%.16f\n", intvar[i], hubble[i], x[i], w);
   }
 
   fclose(f);
